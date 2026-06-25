@@ -173,7 +173,9 @@ export default function TourDetail() {
   const handleWhatsAppBook = () => {
     if (!tour) return;
     const title = lang === 'en' ? tour.title_en : tour.title_es;
-    const msg = `¡Hola! Me interesa reservar el tour: *${title}*\nFecha: ${selectedDate || 'Por confirmar'}\nViajeros: ${travelers}\nPrecio estimado: $${(tour.price_mxn * travelers).toLocaleString('es-MX')} MXN`;
+    const msg = user
+      ? `¡Hola! Me interesa reservar el tour: *${title}*\nFecha: ${selectedDate || 'Por confirmar'}\nViajeros: ${travelers}\nPrecio estimado: $${(tour.price_mxn * travelers).toLocaleString('es-MX')} MXN`
+      : `¡Hola! Me interesa reservar el tour: *${title}*`;
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
