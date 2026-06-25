@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, Filter } from 'lucide-react';
+import { Download, Filter, Trash2, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Reservation } from '../../types';
 
@@ -19,11 +19,18 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-700',
 };
 
+const today = new Date().toISOString().split('T')[0];
+
 export default function AdminReservaciones() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
+
+  // Delete state
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [bulkConfirm, setBulkConfirm] = useState(false);
 
   useEffect(() => {
     supabase
@@ -39,6 +46,30 @@ export default function AdminReservaciones() {
   const updateStatus = async (id: string, status: string) => {
     await supabase.from('reservations').update({ payment_status: status }).eq('id', id);
     setReservations((prev) => prev.map((r) => r.id === id ? { ...r, payment_status: status as Reservation['payment_status'] } : r));
+  };
+
+  const deleteOne = async (id: string) => {
+    setDeleting(true);
+    const { error } = await supabase.from('reservations').delete().eq('id', id);
+    if (!error) {
+      setReservations((prev) => prev.filter((r) => r.id !== id));
+    }
+    setDeleting(false);
+    setDeleteId(null);
+  };
+
+  const pastIds = reservations
+    .filter((r) => r.departure_date < today)
+    .map((r) => r.id);
+
+  const deletePast = async () => {
+    setDeleting(true);
+    const { error } = await supabase.from('reservations').delete().in('id', pastIds);
+    if (!error) {
+      setReservations((prev) => prev.filter((r) => r.departure_date >= today));
+    }
+    setDeleting(false);
+    setBulkConfirm(false);
   };
 
   const filtered = reservations.filter((r) => {
@@ -71,12 +102,23 @@ export default function AdminReservaciones() {
           <h1 className="text-2xl font-black text-gray-900">Reservaciones</h1>
           <p className="text-gray-500 text-sm mt-1">{filtered.length} reservaciones</p>
         </div>
-        <button
-          onClick={exportCsv}
-          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
-        >
-          <Download size={16} /> Exportar CSV
-        </button>
+        <div className="flex items-center gap-2">
+          {pastIds.length > 0 && (
+            <button
+              onClick={() => setBulkConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-red-50 border border-red-200 text-red-600 font-semibold rounded-xl hover:bg-red-100 transition-colors text-sm"
+            >
+              <Trash2 size={15} />
+              Eliminar pasadas ({pastIds.length})
+            </button>
+          )}
+          <button
+            onClick={exportCsv}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
+          >
+            <Download size={16} /> Exportar CSV
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -129,41 +171,122 @@ export default function AdminReservaciones() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filtered.map((res) => (
-                  <tr key={res.id} className="hover:bg-gray-50">
-                    <td className="px-5 py-4">
-                      <p className="font-semibold text-gray-900">{res.customer_name}</p>
-                      <p className="text-gray-400 text-xs">{res.email}</p>
-                    </td>
-                    <td className="px-5 py-4 text-gray-600">{res.phone}</td>
-                    <td className="px-5 py-4 text-gray-600">{res.travelers}</td>
-                    <td className="px-5 py-4 text-gray-600">{res.departure_date}</td>
-                    <td className="px-5 py-4 font-semibold text-[#E8670A]">${res.total_price_mxn.toLocaleString('es-MX')}</td>
-                    <td className="px-5 py-4">
-                      <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${STATUS_COLORS[res.payment_status]}`}>
-                        {STATUS_LABELS[res.payment_status]}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-gray-500 text-xs max-w-32 truncate">{res.notes || '—'}</td>
-                    <td className="px-5 py-4">
-                      <select
-                        value={res.payment_status}
-                        onChange={(e) => updateStatus(res.id, e.target.value)}
-                        className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30"
-                      >
-                        <option value="pending">Pendiente</option>
-                        <option value="paid">Pagado</option>
-                        <option value="refunded">Reembolsado</option>
-                        <option value="cancelled">Cancelado</option>
-                      </select>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((res) => {
+                  const isPast = res.departure_date < today;
+                  return (
+                    <tr key={res.id} className={`hover:bg-gray-50 ${isPast ? 'opacity-60' : ''}`}>
+                      <td className="px-5 py-4">
+                        <p className="font-semibold text-gray-900">{res.customer_name}</p>
+                        <p className="text-gray-400 text-xs">{res.email}</p>
+                      </td>
+                      <td className="px-5 py-4 text-gray-600">{res.phone}</td>
+                      <td className="px-5 py-4 text-gray-600">{res.travelers}</td>
+                      <td className="px-5 py-4 text-gray-600">
+                        {res.departure_date}
+                        {isPast && <span className="ml-1.5 text-xs text-gray-400">(pasada)</span>}
+                      </td>
+                      <td className="px-5 py-4 font-semibold text-[#E8670A]">${res.total_price_mxn.toLocaleString('es-MX')}</td>
+                      <td className="px-5 py-4">
+                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${STATUS_COLORS[res.payment_status]}`}>
+                          {STATUS_LABELS[res.payment_status]}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-gray-500 text-xs max-w-32 truncate">{res.notes || '—'}</td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={res.payment_status}
+                            onChange={(e) => updateStatus(res.id, e.target.value)}
+                            className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30"
+                          >
+                            <option value="pending">Pendiente</option>
+                            <option value="paid">Pagado</option>
+                            <option value="refunded">Reembolsado</option>
+                            <option value="cancelled">Cancelado</option>
+                          </select>
+                          <button
+                            onClick={() => setDeleteId(res.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Eliminar reserva"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {/* Single delete confirmation modal */}
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <AlertTriangle size={20} className="text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900">¿Eliminar reserva?</h3>
+                <p className="text-sm text-gray-500">Esta acción no se puede deshacer.</p>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setDeleteId(null)}
+                className="flex-1 py-2.5 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => deleteOne(deleteId)}
+                disabled={deleting}
+                className="flex-1 py-2.5 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors text-sm disabled:opacity-50"
+              >
+                {deleting ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk delete past confirmation modal */}
+      {bulkConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Trash2 size={20} className="text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900">¿Eliminar reservas pasadas?</h3>
+                <p className="text-sm text-gray-500">
+                  Se eliminarán <strong>{pastIds.length}</strong> reservas cuya fecha de salida ya pasó. Esta acción no se puede deshacer.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setBulkConfirm(false)}
+                className="flex-1 py-2.5 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={deletePast}
+                disabled={deleting}
+                className="flex-1 py-2.5 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors text-sm disabled:opacity-50"
+              >
+                {deleting ? 'Eliminando...' : `Eliminar ${pastIds.length}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
