@@ -11,7 +11,7 @@ const es = {
   home: {
     hero: {
       title: 'Vive México y el Mundo',
-      subtitle: 'Agencia de viajes de grupo desde el Estado de México. Tours nacionales e internacionales con la mejor organización.',
+      subtitle: 'Agencia de viajes ubicada en la ciudad de México. Tours nacionales e internacionales con la mejor organización.',
       cta: 'Ver Tours',
       ctaSecondary: 'Contáctanos',
     },
@@ -349,7 +349,7 @@ const es = {
     seeLess: 'Ver menos',
   },
   footer: {
-    description: 'Agencia de viajes de grupo auténticamente mexicana. Exploramos México y el mundo contigo.',
+    description: 'Agencia de viajes auténticamente mexicana. Exploramos México y el mundo contigo.',
     quickLinks: 'Enlaces rápidos',
     contact: 'Contacto',
     followUs: 'Síguenos',
