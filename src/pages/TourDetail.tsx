@@ -317,7 +317,7 @@ export default function TourDetail() {
                 </span>
               </div>
               <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-4">{title}</h1>
-              <p className="text-gray-600 leading-relaxed">{description}</p>
+              <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">{description}</p>
             </div>
 
             {/* Includes / Excludes */}
