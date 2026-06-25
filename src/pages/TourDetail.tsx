@@ -370,7 +370,7 @@ export default function TourDetail() {
                     </button>
                     {openItinerary === i && (
                       <div className="px-5 pb-5 ml-11">
-                        <p className="text-gray-600 text-sm leading-relaxed">{day.description}</p>
+                        <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">{day.description}</p>
                       </div>
                     )}
                   </div>
