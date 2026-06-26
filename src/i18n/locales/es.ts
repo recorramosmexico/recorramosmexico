@@ -233,7 +233,7 @@ const es = {
     subtitle: 'Soluciones completas para todos tus viajes',
     transport: {
       title: 'Renta de Transporte',
-      description: 'Disponemos de una flota de camionetas y autobuses para grupos de todos los tamaños. Perfecto para eventos corporativos, bodas, excursiones escolares, peregrinaciones y más.',
+      description: 'Disponemos de una flota de camionetas y autobuses para grupos de todos los tamaños. Perfecto para eventos corporativos, bodas, excursiones escolares, eventos culturales, religiosos y más.',
       features: ['Camionetas 8-15 personas', 'Autobuses 30-50 personas', 'Conductor profesional incluido', 'Seguro de viajero', 'Servicio puerta a puerta'],
       form: {
         title: 'Solicitar cotización',
