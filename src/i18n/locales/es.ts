@@ -185,7 +185,7 @@ const es = {
       title: 'Nuestra Historia',
       p1: 'Recorramos México nació con un sueño: hacer que más mexicanos pudieran conocer la riqueza y diversidad de su propio país, y del mundo entero. Somos una agencia de viajes de grupo basada en Tlalnepantla, Estado de México, a las puertas de la Ciudad de México.',
       p2: 'Nos especializamos en tours grupales que combinan la mejor logística con precios accesibles. Desde las playas del Caribe hasta los cañones de Chihuahua, desde los festivales de música hasta las ferias más tradicionales, somos tus aliados perfectos para cada aventura.',
-      p3: 'Nuestra fuerte presencia en redes sociales, especialmente Instagram y WhatsApp, nos permite mantener una comunicación directa y personalizada con cada uno de nuestros viajeros.',
+      p3: 'Nos caracteriza el buen ambiente que ayuda a tener una excelente convivencia.',
     },
     whoWeAre: {
       title: '¿Quiénes somos?',
