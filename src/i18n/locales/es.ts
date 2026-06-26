@@ -11,7 +11,7 @@ const es = {
   home: {
     hero: {
       title: 'Vive México y el Mundo',
-      subtitle: 'Agencia de viajes ubicada en la ciudad de México. Tours nacionales e internacionales con la mejor organización.',
+      subtitle: 'Agencia de viajes con recorridos nacionales e internacionales. Brindamos asesoría para viajes  personalizados, grupales, empresariales, graduaciones, despedidas de solteros, cruceros, etc.',
       cta: 'Ver Tours',
       ctaSecondary: 'Contáctanos',
     },
