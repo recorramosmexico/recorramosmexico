@@ -183,9 +183,9 @@ const es = {
     teamLabel: 'Equipo',
     story: {
       title: 'Nuestra Historia',
-      p1: 'Recorramos México nació con un sueño: hacer que más mexicanos pudieran conocer la riqueza y diversidad de su propio país, y del mundo entero. Somos una marca de Turismo con presencia en Ciudad de México y Àrea Metropolitana.',
-      p2: 'Nos especializamos en tours grupales que combinan la mejor logística con precios accesibles. Desde las playas del Caribe hasta los cañones de Chihuahua, desde los festivales de música hasta las ferias más tradicionales, somos tus aliados perfectos para cada aventura.',
-      p3: 'Nuestra fuerte presencia en redes sociales, especialmente Instagram y WhatsApp, nos permite mantener una comunicación directa y personalizada con cada uno de nuestros viajeros.',
+      p1: 'Recorramos México surge con un objetivo: Más mexicanos puedan conocer, vivir y disfrutar de la riqueza y  la biodiversidad de nuestro lindo país y del mundo entero. Somos una marca de turismo con presencia en Ciudad de México y Àrea Metropolitana.',
+      p2: 'Nos especializamos en tours grupales que combinan la mejor logística a precios accesibles. Desde Baja California hasta el hermoso Caribe, los caňones de Chihuahua, pasando por las ferias tradicionales de los Pueblos Màgicos hasta los festivales de música; sin dejar de lado la magia de la Ciudad México y sus alrededores. Somos tus aliados perfectos para cada aventura.',
+      p3: 'Contamos con presencia en redes sociales: Instagram, Tik Tok, Facebook, Google, Whats App. Con la finalidad de estar en comunicación  constante y directa con cada uno de ustedes.',
     },
     whoWeAre: {
       title: '¿Quiénes somos?',
