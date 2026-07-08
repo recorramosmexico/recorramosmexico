@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Check, MapPin, Users, Calendar, ArrowRight } from 'lucide-react';
+import { Check, MapPin, Users, Calendar, ArrowRight, Clock, Banknote, Building2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+
+type PaymentMethod = 'card' | 'oxxo' | 'bank_transfer';
 
 interface ReservationDetails {
   id: string;
@@ -13,20 +15,52 @@ interface ReservationDetails {
   tours: { title_es: string; title_en: string; destination: string } | null;
 }
 
+const methodConfig: Record<
+  PaymentMethod,
+  { icon: React.ElementType; headerBg: string; iconBg: string; iconColor: string; title: string; subtitle: string; info: string | null }
+> = {
+  card: {
+    icon: Check,
+    headerBg: 'bg-gradient-to-br from-green-500 to-green-600',
+    iconBg: 'bg-white/20',
+    iconColor: 'text-white',
+    title: '¡Pago Exitoso!',
+    subtitle: 'Tu reserva ha sido confirmada',
+    info: null,
+  },
+  oxxo: {
+    icon: Banknote,
+    headerBg: 'bg-gradient-to-br from-amber-500 to-orange-500',
+    iconBg: 'bg-white/20',
+    iconColor: 'text-white',
+    title: 'Voucher OXXO Generado',
+    subtitle: 'Completa tu pago en cualquier tienda OXXO',
+    info: 'Revisa tu correo electrónico para encontrar el voucher con el código de barras. Tienes 3 días para realizar el pago en OXXO. Tu reserva quedará confirmada al recibir el pago.',
+  },
+  bank_transfer: {
+    icon: Building2,
+    headerBg: 'bg-gradient-to-br from-blue-500 to-blue-600',
+    iconBg: 'bg-white/20',
+    iconColor: 'text-white',
+    title: 'Transferencia SPEI Pendiente',
+    subtitle: 'Instrucciones enviadas a tu correo',
+    info: 'Revisa tu correo electrónico con las instrucciones para realizar la transferencia SPEI. Tienes 3 días para completar el pago. Tu reserva quedará confirmada al recibir la transferencia.',
+  },
+};
+
 export default function Success() {
   const [searchParams] = useSearchParams();
   const reservationId = searchParams.get('reservation_id');
+  const method = (searchParams.get('method') ?? 'card') as PaymentMethod;
   const [reservation, setReservation] = useState<ReservationDetails | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const config = methodConfig[method] ?? methodConfig.card;
+  const IconComponent = config.icon;
 
   useEffect(() => {
     const load = async () => {
       if (!reservationId) { setLoading(false); return; }
-
-      await supabase
-        .from('reservations')
-        .update({ payment_status: 'paid' })
-        .eq('id', reservationId);
 
       const { data } = await supabase
         .from('reservations')
@@ -61,15 +95,25 @@ export default function Success() {
     <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-br from-green-500 to-green-600 p-10 text-center">
-            <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check size={40} className="text-white" strokeWidth={3} />
+          {/* Header */}
+          <div className={`${config.headerBg} p-10 text-center`}>
+            <div className={`w-20 h-20 ${config.iconBg} rounded-full flex items-center justify-center mx-auto mb-4`}>
+              <IconComponent size={40} className={config.iconColor} strokeWidth={method === 'card' ? 3 : 2} />
             </div>
-            <h1 className="text-3xl font-black text-white mb-2">¡Pago Exitoso!</h1>
-            <p className="text-green-100 text-sm">Tu reserva ha sido confirmada</p>
+            <h1 className="text-2xl font-black text-white mb-2">{config.title}</h1>
+            <p className="text-white/80 text-sm">{config.subtitle}</p>
           </div>
 
           <div className="p-8">
+            {/* Pending notice */}
+            {config.info && (
+              <div className="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-xl p-4 mb-6">
+                <Clock size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-700 leading-relaxed">{config.info}</p>
+              </div>
+            )}
+
+            {/* Reservation details */}
             {reservation ? (
               <div className="space-y-4 mb-8">
                 <h2 className="font-black text-gray-900 text-lg">
@@ -102,20 +146,26 @@ export default function Success() {
                 </div>
 
                 <div className="bg-orange-50 rounded-xl p-4 flex justify-between items-center mt-2">
-                  <span className="text-sm font-semibold text-gray-700">Total pagado</span>
+                  <span className="text-sm font-semibold text-gray-700">
+                    {method === 'card' ? 'Total pagado' : 'Total a pagar'}
+                  </span>
                   <span className="text-xl font-black text-[#E8670A]">
                     ${reservation.total_price_mxn.toLocaleString('es-MX')} MXN
                   </span>
                 </div>
 
                 <p className="text-xs text-gray-400 text-center">
-                  Recibirás un correo de confirmación con todos los detalles.
+                  {method === 'card'
+                    ? 'Recibirás un correo de confirmación con todos los detalles.'
+                    : 'Recibirás un correo con las instrucciones de pago y la confirmación final.'}
                 </p>
               </div>
             ) : (
               <div className="text-center mb-8">
                 <p className="text-gray-600 text-sm">
-                  Tu pago fue procesado correctamente. En breve recibirás un correo de confirmación.
+                  {method === 'card'
+                    ? 'Tu pago fue procesado correctamente. En breve recibirás un correo de confirmación.'
+                    : 'Tu reserva está registrada. Revisa tu correo para las instrucciones de pago.'}
                 </p>
               </div>
             )}

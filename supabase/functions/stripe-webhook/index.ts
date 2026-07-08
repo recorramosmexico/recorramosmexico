@@ -5,38 +5,22 @@ import { createClient } from 'npm:@supabase/supabase-js@2.49.1';
 const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY')!;
 const stripeWebhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
 const stripe = new Stripe(stripeSecret, {
-  appInfo: {
-    name: 'Bolt Integration',
-    version: '1.0.0',
-  },
+  appInfo: { name: 'Bolt Integration', version: '1.0.0' },
 });
 
 const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
 Deno.serve(async (req) => {
   try {
-    // Handle OPTIONS request for CORS preflight
-    if (req.method === 'OPTIONS') {
-      return new Response(null, { status: 204 });
-    }
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204 });
+    if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
-    if (req.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
-    }
-
-    // get the signature from the header
     const signature = req.headers.get('stripe-signature');
+    if (!signature) return new Response('No signature found', { status: 400 });
 
-    if (!signature) {
-      return new Response('No signature found', { status: 400 });
-    }
-
-    // get the raw body
     const body = await req.text();
 
-    // verify the webhook signature
     let event: Stripe.Event;
-
     try {
       event = await stripe.webhooks.constructEventAsync(body, signature, stripeWebhookSecret);
     } catch (error: any) {
@@ -54,97 +38,144 @@ Deno.serve(async (req) => {
 });
 
 async function handleEvent(event: Stripe.Event) {
+  // Async payment methods (OXXO, SPEI bank transfers) fire these after the customer pays
+  if (event.type === 'checkout.session.async_payment_succeeded') {
+    await handleCheckoutPaymentSucceeded(event.data.object as Stripe.Checkout.Session);
+    return;
+  }
+
+  if (event.type === 'checkout.session.async_payment_failed') {
+    await handleCheckoutPaymentFailed(event.data.object as Stripe.Checkout.Session);
+    return;
+  }
+
   const stripeData = event?.data?.object ?? {};
+  if (!stripeData || !('customer' in stripeData)) return;
 
-  if (!stripeData) {
-    return;
-  }
+  // Skip raw payment_intent.succeeded for one-time payments — handled via checkout.session.completed
+  if (event.type === 'payment_intent.succeeded' && event.data.object.invoice === null) return;
 
-  if (!('customer' in stripeData)) {
-    return;
-  }
-
-  // for one time payments, we only listen for the checkout.session.completed event
-  if (event.type === 'payment_intent.succeeded' && event.data.object.invoice === null) {
-    return;
-  }
-
-  const { customer: customerId } = stripeData;
-
+  const { customer: customerId } = stripeData as { customer?: string | null };
   if (!customerId || typeof customerId !== 'string') {
-    console.error(`No customer received on event: ${JSON.stringify(event)}`);
-  } else {
-    let isSubscription = true;
+    console.error(`No customer on event: ${event.type}`);
+    return;
+  }
 
-    if (event.type === 'checkout.session.completed') {
-      const { mode } = stripeData as Stripe.Checkout.Session;
+  if (event.type === 'checkout.session.completed') {
+    const session = stripeData as Stripe.Checkout.Session;
+    const { mode } = session;
 
-      isSubscription = mode === 'subscription';
-
-      console.info(`Processing ${isSubscription ? 'subscription' : 'one-time payment'} checkout session`);
+    if (mode === 'subscription') {
+      console.info(`Subscription checkout completed for customer: ${customerId}`);
+      await syncCustomerFromStripe(customerId);
+      return;
     }
 
-    const { mode, payment_status } = stripeData as Stripe.Checkout.Session;
-
-    if (isSubscription) {
-      console.info(`Starting subscription sync for customer: ${customerId}`);
-      await syncCustomerFromStripe(customerId);
-    } else if (mode === 'payment' && payment_status === 'paid') {
-      try {
-        // Extract the necessary information from the session
-        const {
-          id: checkout_session_id,
-          payment_intent,
-          amount_subtotal,
-          amount_total,
-          currency,
-          metadata,
-        } = stripeData as Stripe.Checkout.Session;
-
-        // Insert the order into the stripe_orders table
-        const { error: orderError } = await supabase.from('stripe_orders').insert({
-          checkout_session_id,
-          payment_intent_id: payment_intent,
-          customer_id: customerId,
-          amount_subtotal,
-          amount_total,
-          currency,
-          payment_status,
-          status: 'completed',
-        });
-
-        if (orderError) {
-          console.error('Error inserting order:', orderError);
-          return;
-        }
-
-        // Update the reservation payment status if reservation_id is in metadata
-        const reservationId = metadata?.reservation_id;
-        if (reservationId) {
-          const { error: reservationError } = await supabase
-            .from('reservations')
-            .update({ payment_status: 'paid' })
-            .eq('id', reservationId);
-
-          if (reservationError) {
-            console.error('Error updating reservation payment status:', reservationError);
-          } else {
-            console.info(`Updated reservation ${reservationId} to paid`);
-          }
-        }
-
-        console.info(`Successfully processed one-time payment for session: ${checkout_session_id}`);
-      } catch (error) {
-        console.error('Error processing one-time payment:', error);
-      }
+    if (mode === 'payment') {
+      await handleCheckoutPaymentCompleted(session, customerId);
     }
   }
 }
 
-// based on the excellent https://github.com/t3dotgg/stripe-recommendations
+// Fires immediately when the Checkout session is submitted.
+// For card payments: payment_status is 'paid' → mark as completed right away.
+// For OXXO / bank transfers: payment_status is 'unpaid' → store as pending,
+// wait for async_payment_succeeded to mark it paid.
+async function handleCheckoutPaymentCompleted(session: Stripe.Checkout.Session, customerId: string) {
+  const {
+    id: checkout_session_id,
+    payment_intent,
+    amount_subtotal,
+    amount_total,
+    currency,
+    metadata,
+    payment_status,
+    payment_method_types,
+  } = session;
+
+  const isPaid = payment_status === 'paid';
+  const pmType = payment_method_types?.[0] ?? 'card';
+  const paymentIntentId =
+    typeof payment_intent === 'string'
+      ? payment_intent
+      : (payment_intent as Stripe.PaymentIntent | null)?.id ?? null;
+
+  const { error: orderError } = await supabase.from('stripe_orders').insert({
+    checkout_session_id,
+    payment_intent_id: paymentIntentId,
+    customer_id: customerId,
+    amount_subtotal,
+    amount_total,
+    currency,
+    payment_status: payment_status ?? 'unpaid',
+    status: isPaid ? 'completed' : 'pending',
+    payment_method_type: pmType,
+  });
+
+  if (orderError) {
+    console.error('Error inserting order:', orderError);
+    return;
+  }
+
+  if (isPaid) {
+    await markReservationPaid(metadata?.reservation_id, checkout_session_id);
+  } else {
+    console.info(`Async payment pending for session ${checkout_session_id} (${pmType})`);
+  }
+}
+
+// Fires when an OXXO or bank-transfer payment is confirmed.
+async function handleCheckoutPaymentSucceeded(session: Stripe.Checkout.Session) {
+  const { id: checkout_session_id, metadata } = session;
+
+  const { error } = await supabase
+    .from('stripe_orders')
+    .update({ status: 'completed', payment_status: 'paid' })
+    .eq('checkout_session_id', checkout_session_id);
+
+  if (error) {
+    console.error('Error updating order on async success:', error);
+    return;
+  }
+
+  await markReservationPaid(metadata?.reservation_id, checkout_session_id);
+  console.info(`Async payment succeeded for session ${checkout_session_id}`);
+}
+
+// Fires when an async payment expires or is declined.
+async function handleCheckoutPaymentFailed(session: Stripe.Checkout.Session) {
+  const { id: checkout_session_id } = session;
+
+  const { error } = await supabase
+    .from('stripe_orders')
+    .update({ status: 'canceled', payment_status: 'failed' })
+    .eq('checkout_session_id', checkout_session_id);
+
+  if (error) {
+    console.error('Error updating order on async failure:', error);
+  } else {
+    console.info(`Async payment failed for session ${checkout_session_id}`);
+  }
+}
+
+async function markReservationPaid(reservationId: string | null | undefined, sessionId: string) {
+  if (!reservationId) return;
+
+  const { error } = await supabase
+    .from('reservations')
+    .update({ payment_status: 'paid' })
+    .eq('id', reservationId);
+
+  if (error) {
+    console.error(`Error updating reservation ${reservationId} for session ${sessionId}:`, error);
+  } else {
+    console.info(`Reservation ${reservationId} marked as paid`);
+  }
+}
+
+// Based on https://github.com/t3dotgg/stripe-recommendations
 async function syncCustomerFromStripe(customerId: string) {
   try {
-    // fetch latest subscription data from Stripe
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       limit: 1,
@@ -152,30 +183,18 @@ async function syncCustomerFromStripe(customerId: string) {
       expand: ['data.default_payment_method'],
     });
 
-    // TODO verify if needed
     if (subscriptions.data.length === 0) {
-      console.info(`No active subscriptions found for customer: ${customerId}`);
-      const { error: noSubError } = await supabase.from('stripe_subscriptions').upsert(
-        {
-          customer_id: customerId,
-          subscription_status: 'not_started',
-        },
-        {
-          onConflict: 'customer_id',
-        },
+      const { error } = await supabase.from('stripe_subscriptions').upsert(
+        { customer_id: customerId, subscription_status: 'not_started' },
+        { onConflict: 'customer_id' },
       );
-
-      if (noSubError) {
-        console.error('Error updating subscription status:', noSubError);
-        throw new Error('Failed to update subscription status in database');
-      }
+      if (error) console.error('Error updating subscription status:', error);
+      return;
     }
 
-    // assumes that a customer can only have a single subscription
     const subscription = subscriptions.data[0];
 
-    // store subscription state
-    const { error: subError } = await supabase.from('stripe_subscriptions').upsert(
+    const { error } = await supabase.from('stripe_subscriptions').upsert(
       {
         customer_id: customerId,
         subscription_id: subscription.id,
@@ -183,7 +202,8 @@ async function syncCustomerFromStripe(customerId: string) {
         current_period_start: subscription.current_period_start,
         current_period_end: subscription.current_period_end,
         cancel_at_period_end: subscription.cancel_at_period_end,
-        ...(subscription.default_payment_method && typeof subscription.default_payment_method !== 'string'
+        ...(subscription.default_payment_method &&
+        typeof subscription.default_payment_method !== 'string'
           ? {
               payment_method_brand: subscription.default_payment_method.card?.brand ?? null,
               payment_method_last4: subscription.default_payment_method.card?.last4 ?? null,
@@ -191,16 +211,11 @@ async function syncCustomerFromStripe(customerId: string) {
           : {}),
         status: subscription.status,
       },
-      {
-        onConflict: 'customer_id',
-      },
+      { onConflict: 'customer_id' },
     );
 
-    if (subError) {
-      console.error('Error syncing subscription:', subError);
-      throw new Error('Failed to sync subscription in database');
-    }
-    console.info(`Successfully synced subscription for customer: ${customerId}`);
+    if (error) console.error('Error syncing subscription:', error);
+    else console.info(`Subscription synced for customer: ${customerId}`);
   } catch (error) {
     console.error(`Failed to sync subscription for customer ${customerId}:`, error);
     throw error;

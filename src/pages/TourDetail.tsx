@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import {
   MapPin, Clock, Users, Calendar, Check, X as XIcon,
   ChevronDown, ChevronUp, Phone, Mail, User, MessageSquare,
-  ArrowLeft, Share2, LogIn, CheckCircle
+  ArrowLeft, Share2, LogIn, CheckCircle, CreditCard, Banknote, Building2
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -31,6 +31,7 @@ export default function TourDetail() {
   const [submitted, setSubmitted] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
   const [profilePrefilled, setProfilePrefilled] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'oxxo' | 'bank_transfer'>('card');
 
   const { register, handleSubmit, watch, formState: { errors }, reset } = useForm<BookingFormData>({
     defaultValues: { travelers: 1 },
@@ -153,7 +154,8 @@ export default function TourDetail() {
           quantity: numTravelers,
           product_name: tourTitle,
           reservation_id: reservation.id,
-          success_url: `${window.location.origin}/success?reservation_id=${reservation.id}&session_id={CHECKOUT_SESSION_ID}`,
+          payment_method: paymentMethod,
+          success_url: `${window.location.origin}/success?reservation_id=${reservation.id}&session_id={CHECKOUT_SESSION_ID}&method=${paymentMethod}`,
           cancel_url: `${window.location.origin}/cancel?reservation_id=${reservation.id}`,
         }),
       }
@@ -550,6 +552,48 @@ export default function TourDetail() {
                       </span>
                     </div>
                   )}
+
+                  {/* Payment method selector */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-2">
+                      {lang === 'en' ? 'Payment method' : 'Método de pago'}
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { id: 'card', label: lang === 'en' ? 'Card' : 'Tarjeta', Icon: CreditCard },
+                        { id: 'oxxo', label: 'OXXO', Icon: Banknote },
+                        { id: 'bank_transfer', label: lang === 'en' ? 'Transfer' : 'Transferencia', Icon: Building2 },
+                      ] as const).map(({ id, label, Icon }) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setPaymentMethod(id)}
+                          className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-xs font-semibold transition-all ${
+                            paymentMethod === id
+                              ? 'border-[#E8670A] bg-orange-50 text-[#E8670A]'
+                              : 'border-gray-100 text-gray-500 hover:border-gray-200 hover:bg-gray-50'
+                          }`}
+                        >
+                          <Icon size={18} />
+                          <span>{label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {paymentMethod === 'oxxo' && (
+                      <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mt-2">
+                        {lang === 'en'
+                          ? 'You will receive a voucher to pay at any OXXO store within 3 days.'
+                          : 'Recibirás un voucher para pagar en cualquier tienda OXXO en 3 días.'}
+                      </p>
+                    )}
+                    {paymentMethod === 'bank_transfer' && (
+                      <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mt-2">
+                        {lang === 'en'
+                          ? 'You will receive SPEI transfer instructions. Payment must be completed within 3 days.'
+                          : 'Recibirás instrucciones para transferencia SPEI. Tienes 3 días para completar el pago.'}
+                      </p>
+                    )}
+                  </div>
 
                   {checkoutError && (
                     <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100">
