@@ -2,10 +2,11 @@ import { useTranslation } from 'react-i18next';
 import { Shield, Users, Heart, Globe } from 'lucide-react';
 
 const TEAM = [
-  { name: 'Trinidad Gil Martinez', role: 'Director General', img: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=200' },
-  { name: 'Erasmo Gil Martinez', role: 'Coordinador', img: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200' },
-  { name: 'Joshua Ramirez', role: 'Marketing Digital', img: 'https://images.pexels.com/photos/1680172/pexels-photo-1680172.jpeg?auto=compress&cs=tinysrgb&w=200' },
-  { name: 'Axel Alvarez', role: 'Página Web', img: 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=200' },
+  { name: 'Trinidad Gil Martinez', role: 'Coordinador', img: '/images/team/TrinidadGilMartinez.jpeg' },
+  { name: 'Erasmo Gil Martinez', role: 'Coordinador', img: '/images/team/ErasmoGilMartinez.jpeg' },
+  { name: 'Nancy Martínez Carrillo', role: 'Coordinadora', img: '/images/team/NancyMartinez.jpeg' },
+  { name: 'Alan Axel Alvarez Hernandez', role: 'Página Web', img: '/images/team/AlanAxelAlvarez.jpg' },
+  { name: 'Jhosua Gallardo Morales', role: 'Marketing Digital', img: '/images/team/JoshuaGallardo.jpeg' },
 ];
 
 export default function Nosotros() {
@@ -170,9 +171,9 @@ export default function Nosotros() {
             <h2 className="text-3xl md:text-4xl font-black text-gray-900">{t('about.team.title')}</h2>
             <p className="text-gray-500 mt-2">{t('about.team.subtitle')}</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="flex flex-wrap justify-center gap-6">
             {TEAM.map((member) => (
-              <div key={member.name} className="text-center group">
+              <div key={member.name} className="text-center group w-40 md:w-44">
                 <div className="relative mb-4 inline-block">
                   <img
                     src={member.img}
