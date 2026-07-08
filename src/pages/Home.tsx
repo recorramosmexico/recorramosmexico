@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Mountain, Music, Waves, Star, Globe, Bus, Compass, Ticket, Shield, Award, ChevronRight, Quote } from 'lucide-react';
+import { Mountain, Music, Waves, Star, Globe, Bus, Compass, Ticket, ChevronRight, Quote } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Category, Tour, Review } from '../types';
 import TourCard from '../components/ui/TourCard';
@@ -320,24 +320,24 @@ export default function Home() {
       <section className="py-12 bg-[#1A1A1A]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 text-center">
-            <div className="flex items-center gap-3">
-              <Shield size={28} className="text-[#E8670A]" />
+            <div className="flex items-center gap-4">
+              <img src="/SECTUR.png" alt="SECTUR" className="h-10 object-contain brightness-0 invert" />
               <div className="text-left">
                 <p className="text-white font-bold text-sm">RNT SECTUR</p>
                 <p className="text-gray-400 text-xs">No. 04151044189</p>
               </div>
             </div>
             <div className="hidden md:block w-px h-10 bg-white/20" />
-            <div className="flex items-center gap-3">
-              <Award size={28} className="text-[#E8670A]" />
+            <div className="flex items-center gap-4">
+              <img src="/LogoFematur.jpg" alt="FEMATUR" className="h-10 object-contain brightness-0 invert" />
               <div className="text-left">
                 <p className="text-white font-bold text-sm">FEMATUR</p>
                 <p className="text-gray-400 text-xs">{t('home.trust.fematurBadge')}</p>
               </div>
             </div>
             <div className="hidden md:block w-px h-10 bg-white/20" />
-            <div className="flex items-center gap-3">
-              <Award size={28} className="text-[#E8670A]" />
+            <div className="flex items-center gap-4">
+              <img src="/LogoAMAV.jpeg" alt="AMAVCDMX" className="h-10 object-contain brightness-0 invert" />
               <div className="text-left">
                 <p className="text-white font-bold text-sm">AMAVCDMX</p>
                 <p className="text-gray-400 text-xs">{t('home.trust.amavcdmxBadge')}</p>
