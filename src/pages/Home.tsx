@@ -321,7 +321,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 text-center">
             <div className="flex items-center gap-4">
-              <img src="/SECTUR.png" alt="SECTUR" className="h-10 object-contain brightness-0 invert" />
+              <img src="/SECTUR.png" alt="SECTUR" className="h-10 object-contain" />
               <div className="text-left">
                 <p className="text-white font-bold text-sm">RNT SECTUR</p>
                 <p className="text-gray-400 text-xs">No. 04151044189</p>
@@ -329,7 +329,7 @@ export default function Home() {
             </div>
             <div className="hidden md:block w-px h-10 bg-white/20" />
             <div className="flex items-center gap-4">
-              <img src="/LogoFematur.jpg" alt="FEMATUR" className="h-10 object-contain brightness-0 invert" />
+              <img src="/LogoFematur.jpg" alt="FEMATUR" className="h-10 object-contain" />
               <div className="text-left">
                 <p className="text-white font-bold text-sm">FEMATUR</p>
                 <p className="text-gray-400 text-xs">{t('home.trust.fematurBadge')}</p>
@@ -337,7 +337,7 @@ export default function Home() {
             </div>
             <div className="hidden md:block w-px h-10 bg-white/20" />
             <div className="flex items-center gap-4">
-              <img src="/LogoAMAV.jpeg" alt="AMAVCDMX" className="h-10 object-contain brightness-0 invert" />
+              <img src="/LogoAMAV.jpeg" alt="AMAVCDMX" className="h-10 object-contain" />
               <div className="text-left">
                 <p className="text-white font-bold text-sm">AMAVCDMX</p>
                 <p className="text-gray-400 text-xs">{t('home.trust.amavcdmxBadge')}</p>
