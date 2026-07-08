@@ -11,7 +11,7 @@ const es = {
   home: {
     hero: {
       title: 'Vive México y el Mundo',
-      subtitle: 'Agencia de viajes con recorridos nacionales e internacionales. Brindamos asesoría para viajes  personalizados, grupales, empresariales, graduaciones, despedidas de solteros, cruceros, etc.',
+      subtitle: 'Agencia de viajes ubicada en la ciudad de México. Tours nacionales e internacionales con la mejor organización.',
       cta: 'Ver Tours',
       ctaSecondary: 'Contáctanos',
     },
@@ -185,7 +185,7 @@ const es = {
       title: 'Nuestra Historia',
       p1: 'Recorramos México nació con un sueño: hacer que más mexicanos pudieran conocer la riqueza y diversidad de su propio país, y del mundo entero. Somos una agencia de viajes de grupo basada en Tlalnepantla, Estado de México, a las puertas de la Ciudad de México.',
       p2: 'Nos especializamos en tours grupales que combinan la mejor logística con precios accesibles. Desde las playas del Caribe hasta los cañones de Chihuahua, desde los festivales de música hasta las ferias más tradicionales, somos tus aliados perfectos para cada aventura.',
-      p3: 'Contamos con presencia en redes sociales: Instagram, Tik Tok, Youtube, Facebook, Whats app y Google. Con la finalidad de estar en comunicación constante y directa con cada uno de ustedes.',
+      p3: 'Nuestra fuerte presencia en redes sociales, especialmente Instagram y WhatsApp, nos permite mantener una comunicación directa y personalizada con cada uno de nuestros viajeros.',
     },
     whoWeAre: {
       title: '¿Quiénes somos?',
@@ -233,7 +233,7 @@ const es = {
     subtitle: 'Soluciones completas para todos tus viajes',
     transport: {
       title: 'Renta de Transporte',
-      description: 'Disponemos de una flota de camionetas y autobuses para grupos de todos los tamaños. Perfecto para eventos corporativos, bodas, excursiones escolares, eventos culturales, religiosos y más.',
+      description: 'Disponemos de una flota de camionetas y autobuses para grupos de todos los tamaños. Perfecto para eventos corporativos, bodas, excursiones escolares, peregrinaciones y más.',
       features: ['Camionetas 8-15 personas', 'Autobuses 30-50 personas', 'Conductor profesional incluido', 'Seguro de viajero', 'Servicio puerta a puerta'],
       form: {
         title: 'Solicitar cotización',
