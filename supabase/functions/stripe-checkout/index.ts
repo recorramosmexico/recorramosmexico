@@ -101,6 +101,17 @@ Deno.serve(async (req) => {
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
+    // Persist session ID and payment method on the reservation for retry/tracking
+    if (reservation_id) {
+      await supabase
+        .from('reservations')
+        .update({
+          stripe_session_id: session.id,
+          payment_method_type: payment_method,
+        })
+        .eq('id', reservation_id);
+    }
+
     return corsResponse({ sessionId: session.id, url: session.url });
   } catch (error: any) {
     console.error(`Checkout error: ${error.message}`);

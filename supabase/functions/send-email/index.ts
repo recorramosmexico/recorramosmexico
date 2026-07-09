@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin";
+  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_payment_reminder";
   to: string;
   data: Record<string, string | number>;
 }
@@ -127,6 +127,36 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
         subject,
         html_body: buildHtml("Nueva Reserva Recibida", body, logoUrl),
         text_body: buildText(subject, `Nueva reserva:\n\nTour: ${data.tour_title}\nCliente: ${data.customer_name}\nEmail: ${data.email}\nTeléfono: ${data.phone}\nFecha: ${data.departure_date}\nViajeros: ${data.travelers}\nTotal: $${total} MXN`),
+      };
+    }
+
+    case "reservation_payment_reminder": {
+      const subject = `Tu reserva vence en ${data.hours_remaining} horas — completa tu pago`;
+      const total = Number(data.total).toLocaleString("es-MX");
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Hola <strong>${data.customer_name}</strong>,
+        </p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Tu reserva para <strong>${data.tour_title}</strong> está pendiente de pago. Tienes <strong>${data.hours_remaining} horas</strong> para completar el pago antes de que sea cancelada automáticamente.
+        </p>
+        <div style="background:#fff7ed;border-left:4px solid #E8670A;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;">
+          <p style="margin:0;color:#c2410c;font-size:14px;font-weight:600;">Completa tu pago antes de que venza tu reserva.</p>
+        </div>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <p style="margin:0 0 8px;font-size:16px;font-weight:800;color:#111827;">${data.tour_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Fecha de salida:</strong> ${data.departure_date}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Viajeros:</strong> ${data.travelers}</p>
+          <p style="margin:0;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total:</strong> $${total} MXN</p>
+        </div>
+        <a href="https://recorramosmexico.com.mx/mi-cuenta" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Completar Pago Ahora</a>
+        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">Si ya realizaste tu pago, puedes ignorar este mensaje. ¿Preguntas? Escríbenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+      return {
+        subject,
+        html_body: buildHtml("Recordatorio de Pago", body, logoUrl),
+        text_body: buildText(
+          subject,
+          `Hola ${data.customer_name},\n\nTu reserva para ${data.tour_title} vence en ${data.hours_remaining} horas.\n\nTour: ${data.tour_title}\nFecha: ${data.departure_date}\nViajeros: ${data.travelers}\nTotal: $${total} MXN\n\nCompleta tu pago en: https://recorramosmexico.com.mx/mi-cuenta`,
+        ),
       };
     }
   }
