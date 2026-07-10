@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   CalendarDays, MapPin, Users, CreditCard, LogOut, Clock, User, Phone,
-  Mail, Save, CheckCircle, CreditCard as Edit2, AlertTriangle, Banknote, Building2,
+  Mail, Save, CheckCircle, CreditCard as Edit2, AlertTriangle, Banknote,
+  Building2, Wallet, ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -16,8 +17,12 @@ interface Reservation {
   departure_date: string;
   travelers: number;
   total_price_mxn: number;
-  payment_status: 'pending' | 'paid' | 'refunded' | 'cancelled';
-  payment_method_type: 'card' | 'oxxo' | 'bank_transfer';
+  payment_status: 'pending' | 'deposit_paid' | 'paid' | 'refunded' | 'cancelled';
+  payment_method_type: 'card' | 'oxxo' | 'bank_transfer' | null;
+  deposit_percentage_applied: number | null;
+  deposit_amount_mxn: number | null;
+  remaining_balance_mxn: number | null;
+  balance_payment_requested_at: string | null;
   notes: string;
   tours: { title_es: string; title_en: string; destination: string; image_urls: string[] } | null;
 }
@@ -58,24 +63,23 @@ export default function MiCuenta() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loadingRes, setLoadingRes] = useState(true);
 
-  // Profile state
   const [profile, setProfile] = useState<Profile>({ full_name: '', phone: '' });
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileError, setProfileError] = useState('');
 
-  // Checkout state
   const [expandedPayId, setExpandedPayId] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('card');
   const [checkoutLoadingId, setCheckoutLoadingId] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-    pending:   { label: t('account.status.pending'),   color: 'bg-yellow-100 text-yellow-800' },
-    paid:      { label: t('account.status.paid'),      color: 'bg-green-100 text-green-800' },
-    refunded:  { label: t('account.status.refunded'),  color: 'bg-blue-100 text-blue-800' },
-    cancelled: { label: t('account.status.cancelled'), color: 'bg-red-100 text-red-800' },
-    expired:   { label: lang === 'en' ? 'Expired' : 'Expirado', color: 'bg-red-100 text-red-800' },
+    pending:      { label: lang === 'en' ? 'Pending'        : 'Pendiente',       color: 'bg-yellow-100 text-yellow-800' },
+    deposit_paid: { label: lang === 'en' ? 'Deposit Paid'   : 'Anticipo Pagado', color: 'bg-blue-100 text-blue-800' },
+    paid:         { label: lang === 'en' ? 'Fully Paid'     : 'Pagado Completo', color: 'bg-green-100 text-green-800' },
+    refunded:     { label: lang === 'en' ? 'Refunded'       : 'Reembolsado',     color: 'bg-sky-100 text-sky-800' },
+    cancelled:    { label: lang === 'en' ? 'Cancelled'      : 'Cancelado',       color: 'bg-red-100 text-red-800' },
+    expired:      { label: lang === 'en' ? 'Expired'        : 'Expirado',        color: 'bg-red-100 text-red-800' },
   };
 
   const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: React.ReactNode }[] = [
@@ -84,7 +88,6 @@ export default function MiCuenta() {
     { id: 'bank_transfer', label: lang === 'en' ? 'Bank Transfer (SPEI)' : 'Transferencia bancaria (SPEI)', icon: <Building2 size={16} /> },
   ];
 
-  // Load reservations
   useEffect(() => {
     if (!user) return;
     supabase
@@ -98,7 +101,6 @@ export default function MiCuenta() {
       });
   }, [user]);
 
-  // Load profile
   useEffect(() => {
     if (!user) return;
     supabase
@@ -138,7 +140,7 @@ export default function MiCuenta() {
     navigate('/');
   };
 
-  const handleCompletePayment = async (res: Reservation) => {
+  const handleCompletePayment = async (res: Reservation, mode: 'pending' | 'balance') => {
     setCheckoutError(null);
     setCheckoutLoadingId(res.id);
 
@@ -148,9 +150,18 @@ export default function MiCuenta() {
 
       const tourTitle = res.tours
         ? (lang === 'en' ? res.tours.title_en : res.tours.title_es) || res.tours.title_es
-        : lang === 'en' ? 'Tour' : 'Tour';
+        : 'Tour';
 
       const origin = window.location.origin;
+      const isBalance = mode === 'balance';
+      const amountMxn = isBalance
+        ? (res.remaining_balance_mxn ?? res.total_price_mxn)
+        : res.total_price_mxn;
+
+      const productName = isBalance
+        ? `${tourTitle} — ${lang === 'en' ? 'Balance payment' : 'Pago de saldo'}`
+        : tourTitle;
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`,
         {
@@ -160,13 +171,14 @@ export default function MiCuenta() {
             Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            unit_amount: Math.round(res.total_price_mxn * 100),
+            unit_amount: Math.round(amountMxn * 100),
             quantity: 1,
-            product_name: tourTitle,
-            success_url: `${origin}/success?reservation_id=${res.id}`,
+            product_name: productName,
+            success_url: `${origin}/success?reservation_id=${res.id}&method=${selectedMethod}`,
             cancel_url: `${origin}/mi-cuenta`,
             reservation_id: res.id,
             payment_method: selectedMethod,
+            payment_type: isBalance ? 'balance' : 'full',
           }),
         },
       );
@@ -222,14 +234,11 @@ export default function MiCuenta() {
           </button>
         </div>
 
-        {/* Tabs */}
         <div className="max-w-4xl mx-auto mt-8 flex gap-1 bg-white/10 rounded-xl p-1 w-fit">
           <button
             onClick={() => setActiveTab('reservations')}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
-              activeTab === 'reservations'
-                ? 'bg-[#E8670A] text-white shadow'
-                : 'text-gray-300 hover:text-white'
+              activeTab === 'reservations' ? 'bg-[#E8670A] text-white shadow' : 'text-gray-300 hover:text-white'
             }`}
           >
             {lang === 'en' ? 'Reservations' : 'Reservaciones'}
@@ -237,9 +246,7 @@ export default function MiCuenta() {
           <button
             onClick={() => setActiveTab('profile')}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
-              activeTab === 'profile'
-                ? 'bg-[#E8670A] text-white shadow'
-                : 'text-gray-300 hover:text-white'
+              activeTab === 'profile' ? 'bg-[#E8670A] text-white shadow' : 'text-gray-300 hover:text-white'
             }`}
           >
             {lang === 'en' ? 'My Profile' : 'Mi Perfil'}
@@ -280,6 +287,8 @@ export default function MiCuenta() {
                   const isClientExpired = res.payment_status === 'pending' && elapsed >= EXPIRY_HOURS;
                   const isPendingPayable = res.payment_status === 'pending' && elapsed < EXPIRY_HOURS;
                   const expiryProgress = Math.min(100, (elapsed / EXPIRY_HOURS) * 100);
+                  const isDepositPaid = res.payment_status === 'deposit_paid';
+                  const balanceRequested = isDepositPaid && !!res.balance_payment_requested_at;
 
                   const statusKey = isClientExpired ? 'expired' : res.payment_status;
                   const status = STATUS_CONFIG[statusKey] ?? STATUS_CONFIG.pending;
@@ -336,6 +345,30 @@ export default function MiCuenta() {
                             )}
                           </div>
 
+                          {/* Deposit / balance breakdown */}
+                          {(isDepositPaid || res.payment_status === 'paid') && res.deposit_amount_mxn != null && (
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              <div className="bg-green-50 rounded-lg px-3 py-2">
+                                <p className="text-xs text-gray-500 mb-0.5">
+                                  {lang === 'en' ? `Deposit paid (${res.deposit_percentage_applied ?? ''}%)` : `Anticipo pagado (${res.deposit_percentage_applied ?? ''}%)`}
+                                </p>
+                                <p className="text-sm font-bold text-green-700">
+                                  ${(res.deposit_amount_mxn ?? 0).toLocaleString('es-MX')} MXN
+                                </p>
+                              </div>
+                              <div className={`rounded-lg px-3 py-2 ${res.payment_status === 'paid' ? 'bg-green-50' : 'bg-orange-50'}`}>
+                                <p className="text-xs text-gray-500 mb-0.5">
+                                  {res.payment_status === 'paid'
+                                    ? (lang === 'en' ? 'Balance paid' : 'Saldo pagado')
+                                    : (lang === 'en' ? 'Balance (cash on boarding)' : 'Saldo (efectivo al abordar)')}
+                                </p>
+                                <p className={`text-sm font-bold ${res.payment_status === 'paid' ? 'text-green-700' : 'text-[#E8670A]'}`}>
+                                  ${(res.remaining_balance_mxn ?? 0).toLocaleString('es-MX')} MXN
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
                           {res.notes && (
                             <p className="mt-3 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">{res.notes}</p>
                           )}
@@ -345,7 +378,7 @@ export default function MiCuenta() {
                             <span>{t('account.bookedOn')} {formatDate(res.created_at)}</span>
                           </div>
 
-                          {/* ── Pending payment section ── */}
+                          {/* ── Pending initial payment (no deposit paid yet) ── */}
                           {isPendingPayable && (
                             <div className="mt-4">
                               <div className="flex items-center justify-between text-xs mb-1.5">
@@ -376,52 +409,67 @@ export default function MiCuenta() {
                                   }}
                                   className="w-full sm:w-auto px-5 py-2.5 bg-[#E8670A] text-white text-sm font-bold rounded-xl hover:bg-[#B8520A] active:scale-95 transition-all"
                                 >
-                                  {lang === 'en' ? 'Complete Payment' : 'Completar Pago'}
+                                  {lang === 'en' ? 'Pay Deposit' : 'Pagar Anticipo'}
                                 </button>
                               ) : (
-                                <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 space-y-3">
-                                  <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                                    {lang === 'en' ? 'Select payment method' : 'Selecciona método de pago'}
+                                <PaymentMethodSelector
+                                  lang={lang}
+                                  methods={PAYMENT_METHODS}
+                                  selected={selectedMethod}
+                                  onSelect={setSelectedMethod}
+                                  onPay={() => handleCompletePayment(res, 'pending')}
+                                  onCancel={() => { setExpandedPayId(null); setCheckoutError(null); }}
+                                  loading={checkoutLoadingId === res.id}
+                                  error={checkoutError}
+                                  label={lang === 'en' ? 'Pay Deposit Now' : 'Pagar Anticipo Ahora'}
+                                />
+                              )}
+                            </div>
+                          )}
+
+                          {/* ── Balance payment requested by admin ── */}
+                          {balanceRequested && res.payment_status !== 'paid' && (
+                            <div className="mt-4">
+                              <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-3">
+                                <Wallet size={15} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <p className="text-xs font-bold text-blue-800">
+                                    {lang === 'en' ? 'Balance payment requested' : 'Se solicitó el pago del saldo'}
                                   </p>
-                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                    {PAYMENT_METHODS.map((m) => (
-                                      <button
-                                        key={m.id}
-                                        onClick={() => setSelectedMethod(m.id)}
-                                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs font-medium transition-all ${
-                                          selectedMethod === m.id
-                                            ? 'border-[#E8670A] bg-white text-[#E8670A] shadow-sm'
-                                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                                        }`}
-                                      >
-                                        {m.icon}
-                                        {m.label}
-                                      </button>
-                                    ))}
-                                  </div>
-
-                                  {checkoutError && checkoutLoadingId === null && (
-                                    <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{checkoutError}</p>
-                                  )}
-
-                                  <div className="flex gap-2 pt-1">
-                                    <button
-                                      onClick={() => handleCompletePayment(res)}
-                                      disabled={checkoutLoadingId === res.id}
-                                      className="flex-1 py-2.5 bg-[#E8670A] text-white text-sm font-bold rounded-xl hover:bg-[#B8520A] disabled:opacity-60 transition-all"
-                                    >
-                                      {checkoutLoadingId === res.id
-                                        ? (lang === 'en' ? 'Redirecting...' : 'Redirigiendo...')
-                                        : (lang === 'en' ? 'Pay Now' : 'Pagar Ahora')}
-                                    </button>
-                                    <button
-                                      onClick={() => { setExpandedPayId(null); setCheckoutError(null); }}
-                                      className="px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-all"
-                                    >
-                                      {lang === 'en' ? 'Cancel' : 'Cancelar'}
-                                    </button>
-                                  </div>
+                                  <p className="text-xs text-blue-600 mt-0.5">
+                                    {lang === 'en'
+                                      ? `Pay $${(res.remaining_balance_mxn ?? 0).toLocaleString('es-MX')} MXN to complete your reservation.`
+                                      : `Paga $${(res.remaining_balance_mxn ?? 0).toLocaleString('es-MX')} MXN para completar tu reserva.`}
+                                  </p>
                                 </div>
+                              </div>
+
+                              {!isExpanded ? (
+                                <button
+                                  onClick={() => {
+                                    setExpandedPayId(res.id);
+                                    setSelectedMethod('card');
+                                    setCheckoutError(null);
+                                  }}
+                                  className="flex items-center gap-2 px-5 py-2.5 bg-[#1A1A1A] text-white text-sm font-bold rounded-xl hover:bg-black active:scale-95 transition-all"
+                                >
+                                  <ArrowRight size={15} />
+                                  {lang === 'en'
+                                    ? `Pay balance $${(res.remaining_balance_mxn ?? 0).toLocaleString('es-MX')} MXN`
+                                    : `Pagar saldo $${(res.remaining_balance_mxn ?? 0).toLocaleString('es-MX')} MXN`}
+                                </button>
+                              ) : (
+                                <PaymentMethodSelector
+                                  lang={lang}
+                                  methods={PAYMENT_METHODS}
+                                  selected={selectedMethod}
+                                  onSelect={setSelectedMethod}
+                                  onPay={() => handleCompletePayment(res, 'balance')}
+                                  onCancel={() => { setExpandedPayId(null); setCheckoutError(null); }}
+                                  loading={checkoutLoadingId === res.id}
+                                  error={checkoutError}
+                                  label={lang === 'en' ? 'Pay Balance Now' : 'Pagar Saldo Ahora'}
+                                />
                               )}
                             </div>
                           )}
@@ -540,6 +588,64 @@ export default function MiCuenta() {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+interface PaymentMethodSelectorProps {
+  lang: string;
+  methods: { id: PaymentMethod; label: string; icon: React.ReactNode }[];
+  selected: PaymentMethod;
+  onSelect: (m: PaymentMethod) => void;
+  onPay: () => void;
+  onCancel: () => void;
+  loading: boolean;
+  error: string | null;
+  label: string;
+}
+
+function PaymentMethodSelector({ lang, methods, selected, onSelect, onPay, onCancel, loading, error, label }: PaymentMethodSelectorProps) {
+  return (
+    <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 space-y-3">
+      <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+        {lang === 'en' ? 'Select payment method' : 'Selecciona método de pago'}
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {methods.map((m) => (
+          <button
+            key={m.id}
+            onClick={() => onSelect(m.id)}
+            className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs font-medium transition-all ${
+              selected === m.id
+                ? 'border-[#E8670A] bg-white text-[#E8670A] shadow-sm'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+            }`}
+          >
+            {m.icon}
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {error && !loading && (
+        <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+      )}
+
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={onPay}
+          disabled={loading}
+          className="flex-1 py-2.5 bg-[#E8670A] text-white text-sm font-bold rounded-xl hover:bg-[#B8520A] disabled:opacity-60 transition-all"
+        >
+          {loading ? (lang === 'en' ? 'Redirecting...' : 'Redirigiendo...') : label}
+        </button>
+        <button
+          onClick={onCancel}
+          className="px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-all"
+        >
+          {lang === 'en' ? 'Cancel' : 'Cancelar'}
+        </button>
       </div>
     </div>
   );

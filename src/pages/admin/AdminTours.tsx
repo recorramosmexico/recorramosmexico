@@ -37,6 +37,7 @@ interface FormData {
   duration_days: string;
   min_participants: string;
   max_capacity: string;
+  deposit_percentage: string;
   departure_dates: string[];
   // Includes / Excludes
   includes_es: string[];
@@ -54,6 +55,7 @@ const EMPTY_FORM: FormData = {
   difficulty: 'medium', meeting_point: '', is_active: true, is_featured: false,
   description_es: '', description_en: '',
   price_mxn: '', duration_days: '', min_participants: '1', max_capacity: '20',
+  deposit_percentage: '40',
   departure_dates: [],
   includes_es: [''], includes_en: [''],
   excludes_es: [''], excludes_en: [''],
@@ -142,6 +144,7 @@ export default function AdminTours() {
       duration_days: String(tour.duration_days),
       min_participants: String(tour.min_participants ?? 1),
       max_capacity: String(tour.max_capacity),
+      deposit_percentage: String(tour.deposit_percentage ?? 40),
       departure_dates: tour.departure_dates ?? [],
       includes_es: tour.includes_es?.length ? tour.includes_es : [''],
       includes_en: tour.includes_en?.length ? tour.includes_en : [''],
@@ -219,6 +222,7 @@ export default function AdminTours() {
       duration_days: parseInt(form.duration_days) || 1,
       min_participants: parseInt(form.min_participants) || 1,
       max_capacity: parseInt(form.max_capacity) || 20,
+      deposit_percentage: Math.min(100, Math.max(10, parseInt(form.deposit_percentage) || 40)),
       departure_dates: form.departure_dates.filter(Boolean),
       includes_es: form.includes_es.filter(Boolean),
       includes_en: form.includes_en.filter(Boolean),
@@ -485,6 +489,49 @@ export default function AdminTours() {
                     onChange={(e) => setF({ max_capacity: e.target.value })}
                     placeholder="20" className={`${inputCls} pl-8`} />
                 </div>
+              </div>
+            </div>
+
+            {/* Deposit percentage */}
+            <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <label className={labelCls}>% Anticipo al reservar</label>
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-32">
+                      <input
+                        type="number"
+                        min="10"
+                        max="100"
+                        value={form.deposit_percentage}
+                        onChange={(e) => setF({ deposit_percentage: e.target.value })}
+                        className={`${inputCls} pr-8 text-center font-bold text-[#E8670A]`}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold">%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="100"
+                      step="5"
+                      value={form.deposit_percentage}
+                      onChange={(e) => setF({ deposit_percentage: e.target.value })}
+                      className="flex-1 accent-[#E8670A]"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    El saldo restante ({100 - (parseInt(form.deposit_percentage) || 40)}%) se cobra en efectivo al abordar. Mínimo 10%.
+                  </p>
+                </div>
+                {form.price_mxn && (
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xs text-gray-500 mb-1">Por viajero</p>
+                    <p className="text-sm font-black text-[#E8670A]">
+                      ${Math.ceil((parseFloat(form.price_mxn) || 0) * (parseInt(form.deposit_percentage) || 40) / 100).toLocaleString('es-MX')} MXN
+                    </p>
+                    <p className="text-xs text-gray-400">anticipo</p>
+                  </div>
+                )}
               </div>
             </div>
 

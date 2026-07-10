@@ -40,6 +40,7 @@ export interface Tour {
   excludes_en: string[];
   is_active: boolean;
   is_featured: boolean;
+  deposit_percentage: number;
   created_at: string;
   categories?: Category;
 }
@@ -53,9 +54,15 @@ export interface Reservation {
   travelers: number;
   departure_date: string;
   total_price_mxn: number;
-  payment_status: 'pending' | 'paid' | 'refunded' | 'cancelled';
+  payment_status: 'pending' | 'deposit_paid' | 'paid' | 'refunded' | 'cancelled';
   stripe_session_id: string;
   notes: string;
+  deposit_percentage_applied: number | null;
+  deposit_amount_mxn: number | null;
+  remaining_balance_mxn: number | null;
+  balance_payment_requested_at: string | null;
+  balance_stripe_session_id: string | null;
+  payment_method_type: string | null;
   created_at: string;
   tours?: Tour;
 }

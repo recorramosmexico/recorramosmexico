@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_payment_reminder";
+  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_payment_reminder" | "reservation_balance_request";
   to: string;
   data: Record<string, string | number>;
 }
@@ -49,6 +49,37 @@ function buildText(title: string, body: string): string {
 
 function getTemplate(type: EmailPayload["type"], data: Record<string, string | number>, logoUrl: string): { subject: string; html_body: string; text_body: string } {
   switch (type) {
+    case "reservation_balance_request": {
+      const subject = `Solicitud de pago de saldo — ${data.tour_title}`;
+      const balance = Number(data.remaining_balance).toLocaleString("es-MX");
+      const total = Number(data.total).toLocaleString("es-MX");
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Hola <strong>${data.customer_name}</strong>,
+        </p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          El equipo de <strong>Recorramos México</strong> te solicita el pago del saldo restante de tu reserva para <strong>${data.tour_title}</strong>.
+        </p>
+        <div style="background:#fff7ed;border-left:4px solid #E8670A;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;">
+          <p style="margin:0;color:#c2410c;font-size:14px;font-weight:600;">Ingresa a tu cuenta para completar el pago con tarjeta de crédito o débito.</p>
+        </div>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <p style="margin:0 0 8px;font-size:16px;font-weight:800;color:#111827;">${data.tour_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Fecha de salida:</strong> ${data.departure_date}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Viajeros:</strong> ${data.travelers}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total del tour:</strong> $${total} MXN</p>
+          <p style="margin:0;font-size:15px;font-weight:800;color:#E8670A;"><strong style="color:#374151;">Saldo a pagar:</strong> $${balance} MXN</p>
+        </div>
+        <a href="https://recorramosmexico.com.mx/mi-cuenta" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Pagar Saldo Ahora</a>
+        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">¿Preguntas? Escríbenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+      return {
+        subject,
+        html_body: buildHtml("Solicitud de Pago de Saldo", body, logoUrl),
+        text_body: buildText(
+          subject,
+          `Hola ${data.customer_name},\n\nEl equipo de Recorramos México te solicita el pago del saldo restante de tu reserva.\n\nTour: ${data.tour_title}\nFecha: ${data.departure_date}\nViajeros: ${data.travelers}\nSaldo a pagar: $${balance} MXN\n\nIngresa a tu cuenta para completar el pago: https://recorramosmexico.com.mx/mi-cuenta`,
+        ),
+      };
+    }
     case "welcome": {
       const name = String(data.name || data.email || "viajero");
       const subject = "¡Bienvenido a Recorramos México!";
@@ -88,6 +119,9 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
     case "reservation_traveler": {
       const subject = `Confirmación de reserva — ${data.tour_title}`;
       const total = Number(data.total).toLocaleString("es-MX");
+      const depositAmount = data.deposit_amount ? Number(data.deposit_amount).toLocaleString("es-MX") : null;
+      const remainingBalance = data.remaining_balance ? Number(data.remaining_balance).toLocaleString("es-MX") : null;
+      const depositPct = data.deposit_percentage ? String(data.deposit_percentage) : null;
       const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
           Hola <strong>${data.customer_name}</strong>,
         </p>
@@ -98,14 +132,16 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
           <p style="margin:0 0 10px;font-size:16px;font-weight:800;color:#111827;">${data.tour_title}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Fecha de salida:</strong> ${data.departure_date}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Viajeros:</strong> ${data.travelers}</p>
-          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total:</strong> $${total} MXN</p>
-          <p style="margin:0;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Teléfono de contacto:</strong> ${data.phone}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total del tour:</strong> $${total} MXN</p>
+          ${depositAmount ? `<p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Anticipo pagado (${depositPct}%):</strong> $${depositAmount} MXN</p>` : ""}
+          ${remainingBalance ? `<p style="margin:0 0 6px;font-size:14px;color:#E8670A;font-weight:600;"><strong style="color:#374151;">Saldo a pagar en efectivo al abordar:</strong> $${remainingBalance} MXN</p>` : ""}
+          <p style="margin:${depositAmount ? "8px" : "0"} 0 0;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Teléfono de contacto:</strong> ${data.phone}</p>
         </div>
         <p style="color:#6b7280;font-size:13px;margin:0;">Si tienes preguntas escríbenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
       return {
         subject,
         html_body: buildHtml("Reserva Confirmada", body, logoUrl),
-        text_body: buildText(subject, `Hola ${data.customer_name},\n\nTu reserva fue recibida. En breve nuestro equipo se pondrá en contacto contigo para darte mayores detalles así como las recomendaciones para el viaje.\n\nTour: ${data.tour_title}\nFecha: ${data.departure_date}\nViajeros: ${data.travelers}\nTotal: $${total} MXN`),
+        text_body: buildText(subject, `Hola ${data.customer_name},\n\nTu reserva fue recibida.\n\nTour: ${data.tour_title}\nFecha: ${data.departure_date}\nViajeros: ${data.travelers}\nTotal: $${total} MXN${depositAmount ? `\nAnticipo (${depositPct}%): $${depositAmount} MXN\nSaldo en efectivo al abordar: $${remainingBalance} MXN` : ""}`),
       };
     }
 

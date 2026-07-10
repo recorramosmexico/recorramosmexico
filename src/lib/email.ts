@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-type EmailType = 'welcome' | 'contact' | 'reservation_traveler' | 'reservation_admin';
+type EmailType = 'welcome' | 'contact' | 'reservation_traveler' | 'reservation_admin' | 'reservation_payment_reminder' | 'reservation_balance_request';
 
 export async function sendEmail(type: EmailType, to: string, data: Record<string, string | number>) {
   try {

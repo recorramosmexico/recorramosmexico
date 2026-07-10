@@ -96,7 +96,10 @@ export default function TourDetail() {
     setCheckoutError('');
 
     const numTravelers = Number(data.travelers);
-    const total = tour.price_mxn * numTravelers;
+    const totalPrice = tour.price_mxn * numTravelers;
+    const depositPct = tour.deposit_percentage ?? 40;
+    const depositAmount = Math.ceil(totalPrice * depositPct / 100);
+    const remainingBalance = totalPrice - depositAmount;
     const tourTitle = lang === 'en' ? tour.title_en : tour.title_es;
 
     const { data: reservation, error: reservationError } = await supabase
@@ -108,7 +111,10 @@ export default function TourDetail() {
         phone: data.phone,
         travelers: numTravelers,
         departure_date: data.departure_date,
-        total_price_mxn: total,
+        total_price_mxn: totalPrice,
+        deposit_percentage_applied: depositPct,
+        deposit_amount_mxn: depositAmount,
+        remaining_balance_mxn: remainingBalance,
         payment_status: 'pending',
         notes: data.notes || '',
       })
@@ -129,7 +135,10 @@ export default function TourDetail() {
       phone: data.phone,
       departure_date: data.departure_date,
       travelers: String(numTravelers),
-      total: String(total),
+      total: String(totalPrice),
+      deposit_amount: String(depositAmount),
+      remaining_balance: String(remainingBalance),
+      deposit_percentage: String(depositPct),
       notes: data.notes || '',
     };
     sendEmail('reservation_traveler', data.email, emailData);
@@ -141,6 +150,7 @@ export default function TourDetail() {
       return;
     }
 
+    // Charge only the deposit amount
     const response = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`,
       {
@@ -150,11 +160,12 @@ export default function TourDetail() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          unit_amount: Math.round(tour.price_mxn * 100),
-          quantity: numTravelers,
-          product_name: tourTitle,
+          unit_amount: Math.round(depositAmount * 100),
+          quantity: 1,
+          product_name: `${tourTitle} — Anticipo ${depositPct}%`,
           reservation_id: reservation.id,
           payment_method: paymentMethod,
+          payment_type: 'deposit',
           success_url: `${window.location.origin}/success?reservation_id=${reservation.id}&session_id={CHECKOUT_SESSION_ID}&method=${paymentMethod}`,
           cancel_url: `${window.location.origin}/cancel?reservation_id=${reservation.id}`,
         }),
@@ -545,11 +556,28 @@ export default function TourDetail() {
                   </div>
 
                   {travelers > 0 && (
-                    <div className="bg-orange-50 rounded-xl p-4 flex justify-between items-center">
-                      <span className="text-sm font-semibold text-gray-700">{t('tourDetail.bookingForm.total')}</span>
-                      <span className="text-xl font-black text-[#E8670A]">
-                        ${(tour.price_mxn * travelers).toLocaleString('es-MX')} MXN
-                      </span>
+                    <div className="space-y-2">
+                      <div className="bg-orange-50 rounded-xl p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-semibold text-gray-700">{t('tourDetail.bookingForm.total')}</span>
+                          <span className="text-lg font-black text-gray-700 line-through opacity-50">
+                            ${(tour.price_mxn * travelers).toLocaleString('es-MX')} MXN
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-semibold text-[#E8670A]">
+                            {lang === 'en' ? `Deposit (${tour.deposit_percentage ?? 40}%)` : `Anticipo (${tour.deposit_percentage ?? 40}%)`}
+                          </span>
+                          <span className="text-xl font-black text-[#E8670A]">
+                            ${Math.ceil(tour.price_mxn * travelers * (tour.deposit_percentage ?? 40) / 100).toLocaleString('es-MX')} MXN
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2 border-t border-orange-100 pt-2">
+                          {lang === 'en'
+                            ? `Remaining balance $${(tour.price_mxn * travelers - Math.ceil(tour.price_mxn * travelers * (tour.deposit_percentage ?? 40) / 100)).toLocaleString('es-MX')} MXN paid in cash when boarding.`
+                            : `Saldo restante $${(tour.price_mxn * travelers - Math.ceil(tour.price_mxn * travelers * (tour.deposit_percentage ?? 40) / 100)).toLocaleString('es-MX')} MXN se paga en efectivo al abordar.`}
+                        </p>
+                      </div>
                     </div>
                   )}
 

@@ -38,7 +38,6 @@ Deno.serve(async (req) => {
 });
 
 async function handleEvent(event: Stripe.Event) {
-  // Async payment methods (OXXO, SPEI bank transfers) fire these after the customer pays
   if (event.type === 'checkout.session.async_payment_succeeded') {
     await handleCheckoutPaymentSucceeded(event.data.object as Stripe.Checkout.Session);
     return;
@@ -52,7 +51,6 @@ async function handleEvent(event: Stripe.Event) {
   const stripeData = event?.data?.object ?? {};
   if (!stripeData || !('customer' in stripeData)) return;
 
-  // Skip raw payment_intent.succeeded for one-time payments — handled via checkout.session.completed
   if (event.type === 'payment_intent.succeeded' && event.data.object.invoice === null) return;
 
   const { customer: customerId } = stripeData as { customer?: string | null };
@@ -77,10 +75,6 @@ async function handleEvent(event: Stripe.Event) {
   }
 }
 
-// Fires immediately when the Checkout session is submitted.
-// For card payments: payment_status is 'paid' → mark as completed right away.
-// For OXXO / bank transfers: payment_status is 'unpaid' → store as pending,
-// wait for async_payment_succeeded to mark it paid.
 async function handleCheckoutPaymentCompleted(session: Stripe.Checkout.Session, customerId: string) {
   const {
     id: checkout_session_id,
@@ -95,6 +89,7 @@ async function handleCheckoutPaymentCompleted(session: Stripe.Checkout.Session, 
 
   const isPaid = payment_status === 'paid';
   const pmType = payment_method_types?.[0] ?? 'card';
+  const paymentType = metadata?.payment_type ?? 'full';
   const paymentIntentId =
     typeof payment_intent === 'string'
       ? payment_intent
@@ -118,13 +113,12 @@ async function handleCheckoutPaymentCompleted(session: Stripe.Checkout.Session, 
   }
 
   if (isPaid) {
-    await markReservationPaid(metadata?.reservation_id, checkout_session_id);
+    await markReservationPaid(metadata?.reservation_id, checkout_session_id, paymentType);
   } else {
     console.info(`Async payment pending for session ${checkout_session_id} (${pmType})`);
   }
 }
 
-// Fires when an OXXO or bank-transfer payment is confirmed.
 async function handleCheckoutPaymentSucceeded(session: Stripe.Checkout.Session) {
   const { id: checkout_session_id, metadata } = session;
 
@@ -138,11 +132,11 @@ async function handleCheckoutPaymentSucceeded(session: Stripe.Checkout.Session) 
     return;
   }
 
-  await markReservationPaid(metadata?.reservation_id, checkout_session_id);
+  const paymentType = metadata?.payment_type ?? 'full';
+  await markReservationPaid(metadata?.reservation_id, checkout_session_id, paymentType);
   console.info(`Async payment succeeded for session ${checkout_session_id}`);
 }
 
-// Fires when an async payment expires or is declined.
 async function handleCheckoutPaymentFailed(session: Stripe.Checkout.Session) {
   const { id: checkout_session_id } = session;
 
@@ -158,22 +152,30 @@ async function handleCheckoutPaymentFailed(session: Stripe.Checkout.Session) {
   }
 }
 
-async function markReservationPaid(reservationId: string | null | undefined, sessionId: string) {
+// payment_type: 'deposit' → status becomes 'deposit_paid'
+// payment_type: 'balance' → status becomes 'paid' (full payment complete)
+// payment_type: 'full'    → status becomes 'paid'
+async function markReservationPaid(
+  reservationId: string | null | undefined,
+  sessionId: string,
+  paymentType: string,
+) {
   if (!reservationId) return;
+
+  const newStatus = paymentType === 'deposit' ? 'deposit_paid' : 'paid';
 
   const { error } = await supabase
     .from('reservations')
-    .update({ payment_status: 'paid' })
+    .update({ payment_status: newStatus })
     .eq('id', reservationId);
 
   if (error) {
     console.error(`Error updating reservation ${reservationId} for session ${sessionId}:`, error);
   } else {
-    console.info(`Reservation ${reservationId} marked as paid`);
+    console.info(`Reservation ${reservationId} marked as ${newStatus} (payment_type: ${paymentType})`);
   }
 }
 
-// Based on https://github.com/t3dotgg/stripe-recommendations
 async function syncCustomerFromStripe(customerId: string) {
   try {
     const subscriptions = await stripe.subscriptions.list({

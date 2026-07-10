@@ -9,6 +9,7 @@ const stripe = new Stripe(stripeSecret, {
 });
 
 type PaymentMethodInput = 'card' | 'oxxo' | 'bank_transfer';
+type PaymentTypeInput = 'deposit' | 'balance' | 'full';
 
 function corsResponse(body: string | object | null, status = 200) {
   const headers = {
@@ -36,6 +37,7 @@ Deno.serve(async (req) => {
       cancel_url,
       reservation_id,
       payment_method = 'card',
+      payment_type = 'full',
     } = await req.json();
 
     if (!unit_amount || typeof unit_amount !== 'number')
@@ -97,18 +99,26 @@ Deno.serve(async (req) => {
       cancel_url,
       reservation_id,
       payment_method as PaymentMethodInput,
+      payment_type as PaymentTypeInput,
     );
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    // Persist session ID and payment method on the reservation for retry/tracking
+    // Persist session ID on the reservation
     if (reservation_id) {
+      const updateFields: Record<string, string> = {
+        payment_method_type: payment_method,
+      };
+
+      if (payment_type === 'balance') {
+        updateFields['balance_stripe_session_id'] = session.id;
+      } else {
+        updateFields['stripe_session_id'] = session.id;
+      }
+
       await supabase
         .from('reservations')
-        .update({
-          stripe_session_id: session.id,
-          payment_method_type: payment_method,
-        })
+        .update(updateFields)
         .eq('id', reservation_id);
     }
 
@@ -128,6 +138,7 @@ function buildSessionParams(
   cancel_url: string,
   reservation_id: string | undefined,
   payment_method: PaymentMethodInput,
+  payment_type: PaymentTypeInput,
 ): Stripe.Checkout.SessionCreateParams {
   const lineItems: Stripe.Checkout.SessionCreateParams['line_items'] = [
     {
@@ -146,7 +157,9 @@ function buildSessionParams(
     mode: 'payment',
     success_url,
     cancel_url,
-    metadata: reservation_id ? { reservation_id: String(reservation_id) } : undefined,
+    metadata: reservation_id
+      ? { reservation_id: String(reservation_id), payment_type }
+      : undefined,
   };
 
   if (payment_method === 'oxxo') {
