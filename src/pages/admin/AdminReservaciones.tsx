@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, Filter, Trash2, AlertTriangle, Send, Users, CheckCircle } from 'lucide-react';
+import { Download, Filter, Trash2, AlertTriangle, Send, Users, CheckCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { sendEmail } from '../../lib/email';
 import type { Reservation } from '../../types';
@@ -42,6 +42,10 @@ export default function AdminReservaciones() {
   const [bulkRequestingDate, setBulkRequestingDate] = useState<string | null>(null);
   const [bulkRequestedDates, setBulkRequestedDates] = useState<Set<string>>(new Set());
 
+  // Sync payment state
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [syncResults, setSyncResults] = useState<Record<string, { ok: boolean; msg: string }>>({});
+
   useEffect(() => {
     supabase
       .from('reservations')
@@ -76,6 +80,48 @@ export default function AdminReservaciones() {
     if (!error) setReservations((prev) => prev.filter((r) => r.departure_date >= today));
     setDeleting(false);
     setBulkConfirm(false);
+  };
+
+  const syncPayment = async (res: Reservation) => {
+    setSyncingId(res.id);
+    setSyncResults((prev) => ({ ...prev, [res.id]: { ok: false, msg: '' } }));
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Sin sesión');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-payment`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ reservation_id: res.id }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error ?? 'Error al sincronizar');
+
+      setSyncResults((prev) => ({
+        ...prev,
+        [res.id]: { ok: true, msg: data.message },
+      }));
+
+      if (data.changed) {
+        setReservations((prev) =>
+          prev.map((r) => r.id === res.id ? { ...r, payment_status: data.status } : r)
+        );
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSyncResults((prev) => ({ ...prev, [res.id]: { ok: false, msg } }));
+    } finally {
+      setSyncingId(null);
+    }
   };
 
   const requestBalancePayment = async (res: Reservation) => {
@@ -345,7 +391,8 @@ export default function AdminReservaciones() {
                         </span>
                       </td>
                       <td className="px-5 py-4">
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                           <select
                             value={res.payment_status}
                             onChange={(e) => updateStatus(res.id, e.target.value)}
@@ -357,6 +404,19 @@ export default function AdminReservaciones() {
                             <option value="refunded">Reembolsado</option>
                             <option value="cancelled">Cancelado</option>
                           </select>
+
+                          {/* Sync button — visible for pending/deposit_paid that have a Stripe session */}
+                          {(res.payment_status === 'pending' || res.payment_status === 'deposit_paid') && res.stripe_session_id && (
+                            <button
+                              onClick={() => syncPayment(res)}
+                              disabled={syncingId === res.id}
+                              title="Consultar Stripe y sincronizar estado"
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 transition-colors disabled:opacity-50"
+                            >
+                              <RefreshCw size={12} className={syncingId === res.id ? 'animate-spin' : ''} />
+                              {syncingId === res.id ? 'Sync...' : 'Sync'}
+                            </button>
+                          )}
 
                           {isDepositPaid && !balanceRequested && (
                             <button
@@ -386,6 +446,16 @@ export default function AdminReservaciones() {
                           >
                             <Trash2 size={14} />
                           </button>
+                        </div>
+
+                          {/* Sync result message */}
+                          {syncResults[res.id]?.msg && (
+                            <p className={`text-xs px-2 py-1 rounded-lg ${
+                              syncResults[res.id].ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
+                            }`}>
+                              {syncResults[res.id].msg}
+                            </p>
+                          )}
                         </div>
                       </td>
                     </tr>
