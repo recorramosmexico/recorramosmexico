@@ -63,6 +63,7 @@ export interface Reservation {
   balance_payment_requested_at: string | null;
   balance_stripe_session_id: string | null;
   payment_method_type: string | null;
+  reservation_number: string | null;
   created_at: string;
   tours?: Tour;
 }
