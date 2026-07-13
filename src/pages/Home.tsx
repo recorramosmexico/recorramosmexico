@@ -91,7 +91,7 @@ export default function Home() {
           <div className="mt-16 grid grid-cols-3 gap-6 md:gap-12 text-center">
             {[
               { value: '5,000+', label: t('home.stats.travelers') },
-              { value: '50+', label: t('home.stats.destinations') },
+              { value: '500+', label: t('home.stats.destinations') },
               { value: '5+', label: t('home.stats.experience') },
             ].map((stat) => (
               <div key={stat.label}>
