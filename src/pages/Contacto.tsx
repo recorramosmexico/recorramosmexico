@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
-import { MapPin, Mail, Phone, Clock, Send, CheckCircle } from 'lucide-react';
+import { MapPin, Mail, Phone, Clock, Send, CheckCircle, Instagram, Facebook } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { sendEmail } from '../lib/email';
 
@@ -98,6 +98,42 @@ export default function Contacto() {
                 <p className="text-green-100 text-sm">{t('contact.info.phone')}</p>
               </div>
             </a>
+
+            {/* Redes sociales */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4">Síguenos</h3>
+              <div className="flex gap-3">
+                <a
+                  href="https://www.instagram.com/recorramosmexico_oficial/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 flex-1 px-4 py-3 rounded-xl bg-gray-50 hover:bg-[#E8670A] hover:text-white transition-colors group"
+                >
+                  <Instagram size={18} className="text-[#E8670A] group-hover:text-white transition-colors" />
+                  <span className="text-sm font-medium text-gray-700 group-hover:text-white transition-colors">Instagram</span>
+                </a>
+                <a
+                  href="https://www.facebook.com/recorramosmx"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 flex-1 px-4 py-3 rounded-xl bg-gray-50 hover:bg-[#E8670A] hover:text-white transition-colors group"
+                >
+                  <Facebook size={18} className="text-[#E8670A] group-hover:text-white transition-colors" />
+                  <span className="text-sm font-medium text-gray-700 group-hover:text-white transition-colors">Facebook</span>
+                </a>
+                <a
+                  href="https://www.tiktok.com/@recorramosmexico_oficial"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 flex-1 px-4 py-3 rounded-xl bg-gray-50 hover:bg-[#E8670A] hover:text-white transition-colors group"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" className="text-[#E8670A] group-hover:text-white transition-colors flex-shrink-0">
+                    <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/>
+                  </svg>
+                  <span className="text-sm font-medium text-gray-700 group-hover:text-white transition-colors">TikTok</span>
+                </a>
+              </div>
+            </div>
 
             {/* Map */}
             <div className="bg-gray-200 rounded-2xl overflow-hidden h-48">
