@@ -164,15 +164,81 @@ async function markReservationPaid(
 
   const newStatus = paymentType === 'deposit' ? 'deposit_paid' : 'paid';
 
-  const { error } = await supabase
+  // Generate unique reservation number via DB function
+  const { data: numberRow, error: numberError } = await supabase
+    .rpc('generate_reservation_number');
+
+  if (numberError || !numberRow) {
+    console.error(`Error generating reservation number for ${reservationId}:`, numberError);
+    await supabase
+      .from('reservations')
+      .update({ payment_status: newStatus })
+      .eq('id', reservationId);
+    return;
+  }
+
+  const reservationNumber: string = numberRow;
+
+  const { error: updateError } = await supabase
     .from('reservations')
-    .update({ payment_status: newStatus })
+    .update({ payment_status: newStatus, reservation_number: reservationNumber })
     .eq('id', reservationId);
 
-  if (error) {
-    console.error(`Error updating reservation ${reservationId} for session ${sessionId}:`, error);
-  } else {
-    console.info(`Reservation ${reservationId} marked as ${newStatus} (payment_type: ${paymentType})`);
+  if (updateError) {
+    console.error(`Error updating reservation ${reservationId} for session ${sessionId}:`, updateError);
+    return;
+  }
+
+  console.info(`Reservation ${reservationId} marked as ${newStatus}, number: ${reservationNumber}`);
+
+  // Fetch full reservation + tour data to send confirmation email
+  const { data: reservation, error: fetchError } = await supabase
+    .from('reservations')
+    .select('*, tours(title_es, title_en)')
+    .eq('id', reservationId)
+    .single();
+
+  if (fetchError || !reservation) {
+    console.error(`Error fetching reservation ${reservationId} for email:`, fetchError);
+    return;
+  }
+
+  const tourTitle = reservation.tours?.title_es || reservation.tours?.title_en || 'Tour';
+
+  await sendConfirmationEmail({
+    to: reservation.email,
+    reservation_number: reservationNumber,
+    customer_name: reservation.customer_name,
+    tour_title: tourTitle,
+    departure_date: reservation.departure_date,
+    travelers: String(reservation.travelers),
+    total: String(reservation.total_price_mxn),
+    deposit_amount: reservation.deposit_amount_mxn ? String(reservation.deposit_amount_mxn) : '',
+    remaining_balance: reservation.remaining_balance_mxn ? String(reservation.remaining_balance_mxn) : '',
+    deposit_percentage: reservation.deposit_percentage_applied ? String(reservation.deposit_percentage_applied) : '',
+    phone: reservation.phone,
+  });
+}
+
+async function sendConfirmationEmail(data: Record<string, string>) {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({
+        type: 'reservation_confirmed',
+        to: data.to,
+        data,
+      }),
+    });
+  } catch (err) {
+    console.error('Error sending confirmation email:', err);
   }
 }
 

@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_payment_reminder" | "reservation_balance_request";
+  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_confirmed";
   to: string;
   data: Record<string, string | number>;
 }
@@ -49,6 +49,80 @@ function buildText(title: string, body: string): string {
 
 function getTemplate(type: EmailPayload["type"], data: Record<string, string | number>, logoUrl: string): { subject: string; html_body: string; text_body: string } {
   switch (type) {
+    case "reservation_pending_payment": {
+      const subject = `Solicitud de reserva recibida — ${data.tour_title}`;
+      const total = Number(data.total).toLocaleString("es-MX");
+      const depositAmount = data.deposit_amount ? Number(data.deposit_amount).toLocaleString("es-MX") : null;
+      const depositPct = data.deposit_percentage ? String(data.deposit_percentage) : null;
+      const paymentMethodLabel = data.payment_method === 'oxxo' ? 'OXXO' : data.payment_method === 'bank_transfer' ? 'SPEI / Transferencia bancaria' : 'Pago asíncrono';
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Hola <strong>${data.customer_name}</strong>,
+        </p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Hemos recibido tu solicitud de reserva para <strong>${data.tour_title}</strong>. Sin embargo, <strong>tu reserva no quedará confirmada hasta que realices el pago del anticipo</strong> a través de <strong>${paymentMethodLabel}</strong>.
+        </p>
+        <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;">
+          <p style="margin:0 0 6px;color:#92400e;font-size:14px;font-weight:700;">Importante: tienes maximo 72 horas para realizar el pago.</p>
+          <p style="margin:0;color:#92400e;font-size:13px;line-height:1.6;">Si no recibimos tu pago en ese plazo, tu solicitud sera cancelada automaticamente y el lugar quedara disponible para otros viajeros.</p>
+        </div>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <p style="margin:0 0 10px;font-size:16px;font-weight:800;color:#111827;">${data.tour_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Fecha de salida:</strong> ${data.departure_date}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Viajeros:</strong> ${data.travelers}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total del tour:</strong> $${total} MXN</p>
+          ${depositAmount ? `<p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#E8670A;"><strong style="color:#374151;">Anticipo requerido (${depositPct}%):</strong> $${depositAmount} MXN</p>` : ""}
+          <p style="margin:8px 0 0;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Metodo de pago:</strong> ${paymentMethodLabel}</p>
+          <p style="margin:6px 0 0;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Telefono de contacto:</strong> ${data.phone}</p>
+        </div>
+        <p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 20px;">Sigue las instrucciones que Stripe te mostro en pantalla para completar tu pago. Una vez confirmado, recibiras un correo con tu numero de reserva y la confirmacion oficial.</p>
+        <a href="https://recorramosmexico.com.mx/mi-cuenta" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Ver Estado de mi Reserva</a>
+        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">Si tienes preguntas escribenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+      return {
+        subject,
+        html_body: buildHtml("Solicitud Recibida — Pago Pendiente", body, logoUrl),
+        text_body: buildText(
+          subject,
+          `Hola ${data.customer_name},\n\nHemos recibido tu solicitud de reserva para ${data.tour_title}. Tu reserva NO esta confirmada hasta que realices el pago.\n\nIMPORTANTE: Tienes maximo 72 horas para pagar. Si no se recibe el pago en ese plazo, tu solicitud sera cancelada automaticamente.\n\nTour: ${data.tour_title}\nFecha: ${data.departure_date}\nViajeros: ${data.travelers}\nTotal: $${total} MXN${depositAmount ? `\nAnticipo requerido (${depositPct}%): $${depositAmount} MXN` : ""}\nMetodo: ${paymentMethodLabel}\n\nSigue las instrucciones de Stripe para completar tu pago. Cuando se confirme, recibiras tu numero de reserva.\n\nVer estado: https://recorramosmexico.com.mx/mi-cuenta`,
+        ),
+      };
+    }
+
+    case "reservation_confirmed": {
+      const subject = `Reserva Confirmada ${data.reservation_number} — ${data.tour_title}`;
+      const total = Number(data.total).toLocaleString("es-MX");
+      const depositAmount = data.deposit_amount ? Number(data.deposit_amount).toLocaleString("es-MX") : null;
+      const remainingBalance = data.remaining_balance ? Number(data.remaining_balance).toLocaleString("es-MX") : null;
+      const depositPct = data.deposit_percentage ? String(data.deposit_percentage) : null;
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Hola <strong>${data.customer_name}</strong>,
+        </p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Tu pago ha sido confirmado y tu reserva esta oficialmente registrada. En breve nuestro equipo se pondra en contacto contigo con los detalles y recomendaciones para el viaje.
+        </p>
+        <div style="background:#ecfdf5;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;">
+          <p style="margin:0 0 4px;color:#065f46;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Numero de Reserva</p>
+          <p style="margin:0;color:#065f46;font-size:24px;font-weight:900;letter-spacing:3px;">${data.reservation_number}</p>
+        </div>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <p style="margin:0 0 10px;font-size:16px;font-weight:800;color:#111827;">${data.tour_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Fecha de salida:</strong> ${data.departure_date}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Viajeros:</strong> ${data.travelers}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total del tour:</strong> $${total} MXN</p>
+          ${depositAmount ? `<p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Anticipo pagado (${depositPct}%):</strong> $${depositAmount} MXN</p>` : ""}
+          ${remainingBalance ? `<p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#E8670A;"><strong style="color:#374151;">Saldo a pagar en efectivo al abordar:</strong> $${remainingBalance} MXN</p>` : ""}
+          <p style="margin:8px 0 0;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Telefono de contacto:</strong> ${data.phone}</p>
+        </div>
+        <p style="color:#6b7280;font-size:13px;margin:0;">Si tienes preguntas escribenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+      return {
+        subject,
+        html_body: buildHtml("Reserva Confirmada", body, logoUrl),
+        text_body: buildText(
+          subject,
+          `Hola ${data.customer_name},\n\nTu pago fue confirmado. Tu reserva esta registrada oficialmente.\n\nNumero de reserva: ${data.reservation_number}\n\nTour: ${data.tour_title}\nFecha: ${data.departure_date}\nViajeros: ${data.travelers}\nTotal: $${total} MXN${depositAmount ? `\nAnticipo (${depositPct}%): $${depositAmount} MXN\nSaldo en efectivo al abordar: $${remainingBalance} MXN` : ""}`,
+        ),
+      };
+    }
+
     case "reservation_balance_request": {
       const subject = `Solicitud de pago de saldo — ${data.tour_title}`;
       const balance = Number(data.remaining_balance).toLocaleString("es-MX");
@@ -80,6 +154,7 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
         ),
       };
     }
+
     case "welcome": {
       const name = String(data.name || data.email || "viajero");
       const subject = "¡Bienvenido a Recorramos México!";
@@ -90,7 +165,7 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
           Nos da mucho gusto tenerte con nosotros. Ya puedes explorar nuestros tours, hacer reservaciones y gestionar tu cuenta desde tu perfil.
         </p>
         <div style="background:#fff7ed;border-left:4px solid #E8670A;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0;">
-          <p style="margin:0;color:#c2410c;font-size:14px;font-weight:600;">🌎 Explora nuestros tours disponibles y empieza a planear tu próxima aventura.</p>
+          <p style="margin:0;color:#c2410c;font-size:14px;font-weight:600;">Explora nuestros tours disponibles y empieza a planear tu proxima aventura.</p>
         </div>
         <a href="https://recorramosmexico.com.mx/tours" style="display:inline-block;margin-top:8px;padding:12px 28px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:14px;">Ver Tours</a>`;
       return {

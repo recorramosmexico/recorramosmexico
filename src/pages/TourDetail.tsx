@@ -127,7 +127,6 @@ export default function TourDetail() {
       return;
     }
 
-    // Send confirmation emails (non-blocking)
     const emailData = {
       tour_title: tourTitle,
       customer_name: data.customer_name,
@@ -140,8 +139,16 @@ export default function TourDetail() {
       remaining_balance: String(remainingBalance),
       deposit_percentage: String(depositPct),
       notes: data.notes || '',
+      payment_method: paymentMethod,
     };
-    sendEmail('reservation_traveler', data.email, emailData);
+
+    // For async payment methods (OXXO/SPEI), send a "pending" email explaining
+    // the reservation is not confirmed until payment is received (max 72h).
+    // For card payments, the webhook sends the confirmation email once payment is confirmed.
+    const isAsyncPayment = paymentMethod === 'oxxo' || paymentMethod === 'bank_transfer';
+    if (isAsyncPayment) {
+      sendEmail('reservation_pending_payment', data.email, emailData);
+    }
     sendEmail('reservation_admin', 'contacto@recorramosmexico.com.mx', emailData);
 
     const { data: { session } } = await supabase.auth.getSession();
