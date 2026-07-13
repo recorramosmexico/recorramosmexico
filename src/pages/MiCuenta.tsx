@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   CalendarDays, MapPin, Users, CreditCard, LogOut, Clock, User, Phone,
   Mail, Save, CheckCircle, CreditCard as Edit2, AlertTriangle, Banknote,
-  Building2, Wallet, ArrowRight,
+  Building2, Wallet, ArrowRight, Calendar,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -30,6 +30,8 @@ interface Reservation {
 interface Profile {
   full_name: string;
   phone: string;
+  birth_date: string;
+  sex: string;
 }
 
 type Tab = 'reservations' | 'profile';
@@ -63,7 +65,7 @@ export default function MiCuenta() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loadingRes, setLoadingRes] = useState(true);
 
-  const [profile, setProfile] = useState<Profile>({ full_name: '', phone: '' });
+  const [profile, setProfile] = useState<Profile>({ full_name: '', phone: '', birth_date: '', sex: '' });
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileError, setProfileError] = useState('');
@@ -105,13 +107,15 @@ export default function MiCuenta() {
     if (!user) return;
     supabase
       .from('profiles')
-      .select('full_name, phone')
+      .select('full_name, phone, birth_date, sex')
       .eq('id', user.id)
       .maybeSingle()
       .then(({ data }) => {
         setProfile({
           full_name: data?.full_name || user.user_metadata?.full_name || '',
           phone: data?.phone || '',
+          birth_date: data?.birth_date || '',
+          sex: data?.sex || '',
         });
       });
   }, [user]);
@@ -124,7 +128,13 @@ export default function MiCuenta() {
 
     const { error } = await supabase
       .from('profiles')
-      .upsert({ id: user.id, full_name: profile.full_name, phone: profile.phone });
+      .upsert({
+        id: user.id,
+        full_name: profile.full_name,
+        phone: profile.phone,
+        birth_date: profile.birth_date || null,
+        sex: profile.sex || null,
+      });
 
     setSavingProfile(false);
     if (error) {
@@ -557,6 +567,41 @@ export default function MiCuenta() {
                     className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 focus:border-[#E8670A] transition"
                   />
                   <Edit2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    {lang === 'en' ? 'Date of birth' : 'Fecha de nacimiento'}
+                  </label>
+                  <div className="relative">
+                    <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="date"
+                      value={profile.birth_date}
+                      onChange={(e) => setProfile({ ...profile, birth_date: e.target.value })}
+                      max={new Date().toISOString().split('T')[0]}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 focus:border-[#E8670A] transition"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    {lang === 'en' ? 'Sex' : 'Sexo'}
+                  </label>
+                  <select
+                    value={profile.sex}
+                    onChange={(e) => setProfile({ ...profile, sex: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 focus:border-[#E8670A] transition bg-white"
+                  >
+                    <option value="">{lang === 'en' ? 'Select...' : 'Seleccionar...'}</option>
+                    <option value="male">{lang === 'en' ? 'Male' : 'Masculino'}</option>
+                    <option value="female">{lang === 'en' ? 'Female' : 'Femenino'}</option>
+                    <option value="other">{lang === 'en' ? 'Other' : 'Otro'}</option>
+                    <option value="prefer_not_to_say">{lang === 'en' ? 'Prefer not to say' : 'Prefiero no decir'}</option>
+                  </select>
                 </div>
               </div>
 
