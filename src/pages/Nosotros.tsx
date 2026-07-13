@@ -50,7 +50,7 @@ export default function Nosotros() {
                 className="w-full rounded-3xl shadow-2xl"
               />
               <div className="absolute -bottom-6 -right-6 bg-[#E8670A] text-white rounded-2xl p-5 shadow-lg">
-                <p className="text-3xl font-black">500+</p>
+                <p className="text-3xl font-black">5,000+</p>
                 <p className="text-sm font-medium mt-1">{t('about.happyTravelers')}</p>
               </div>
             </div>
