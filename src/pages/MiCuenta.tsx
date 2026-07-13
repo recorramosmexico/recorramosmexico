@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   CalendarDays, MapPin, Users, CreditCard, LogOut, Clock, User, Phone,
   Mail, Save, CheckCircle, CreditCard as Edit2, AlertTriangle, Banknote,
-  Building2, Wallet, ArrowRight, Calendar,
+  Building2, Wallet, ArrowRight, Calendar, RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -64,6 +64,7 @@ export default function MiCuenta() {
   const [activeTab, setActiveTab] = useState<Tab>('reservations');
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loadingRes, setLoadingRes] = useState(true);
+  const [refreshingRes, setRefreshingRes] = useState(false);
 
   const [profile, setProfile] = useState<Profile>({ full_name: '', phone: '', birth_date: '', sex: '' });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -90,18 +91,34 @@ export default function MiCuenta() {
     { id: 'bank_transfer', label: lang === 'en' ? 'Bank Transfer (SPEI)' : 'Transferencia bancaria (SPEI)', icon: <Building2 size={16} /> },
   ];
 
-  useEffect(() => {
+  const fetchReservations = useCallback(async (silent = false) => {
     if (!user) return;
-    supabase
+    if (!silent) setLoadingRes(true);
+    else setRefreshingRes(true);
+    const { data } = await supabase
       .from('reservations')
       .select('*, tours(title_es, title_en, destination, image_urls)')
       .eq('email', user.email)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setReservations((data as Reservation[]) ?? []);
-        setLoadingRes(false);
-      });
+      .order('created_at', { ascending: false });
+    setReservations((data as Reservation[]) ?? []);
+    if (!silent) setLoadingRes(false);
+    else setRefreshingRes(false);
   }, [user]);
+
+  useEffect(() => {
+    fetchReservations();
+  }, [fetchReservations]);
+
+  // Silently re-fetch when user returns to the tab so admin changes are reflected
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && activeTab === 'reservations') {
+        fetchReservations(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [fetchReservations, activeTab]);
 
   useEffect(() => {
     if (!user) return;
@@ -270,7 +287,18 @@ export default function MiCuenta() {
         {/* ── RESERVATIONS TAB ── */}
         {activeTab === 'reservations' && (
           <>
-            <h2 className="text-xl font-black text-gray-900 mb-6">{t('account.reservations')}</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-black text-gray-900">{t('account.reservations')}</h2>
+              <button
+                onClick={() => fetchReservations(true)}
+                disabled={refreshingRes}
+                title={lang === 'en' ? 'Refresh reservations' : 'Actualizar reservaciones'}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <RefreshCw size={13} className={refreshingRes ? 'animate-spin' : ''} />
+                {lang === 'en' ? 'Refresh' : 'Actualizar'}
+              </button>
+            </div>
             {loadingRes ? (
               <div className="flex justify-center py-16">
                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#E8670A]" />

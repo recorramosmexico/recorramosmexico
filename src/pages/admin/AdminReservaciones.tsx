@@ -137,10 +137,17 @@ export default function AdminReservaciones() {
     setRequestingPayId(res.id);
     const now = new Date().toISOString();
 
-    await supabase
+    const { error } = await supabase
       .from('reservations')
       .update({ balance_payment_requested_at: now })
       .eq('id', res.id);
+
+    if (error) {
+      console.error('Error updating balance_payment_requested_at:', error);
+      setSyncResults((prev) => ({ ...prev, [res.id]: { ok: false, msg: 'Error al actualizar la reserva' } }));
+      setRequestingPayId(null);
+      return;
+    }
 
     setReservations((prev) =>
       prev.map((r) => r.id === res.id ? { ...r, balance_payment_requested_at: now } : r)
@@ -170,10 +177,17 @@ export default function AdminReservaciones() {
     const now = new Date().toISOString();
     const ids = targets.map((r) => r.id);
 
-    await supabase
+    const { error } = await supabase
       .from('reservations')
       .update({ balance_payment_requested_at: now })
       .in('id', ids);
+
+    if (error) {
+      console.error('Error updating bulk balance_payment_requested_at:', error);
+      setBulkRequestingDate(null);
+      setBulkRequestConfirm(null);
+      return;
+    }
 
     for (const res of targets) {
       const tourTitle = (res.tours as { title_es: string } | undefined)?.title_es ?? 'Tour';
