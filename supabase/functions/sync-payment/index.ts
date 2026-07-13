@@ -37,7 +37,13 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return json({ error: 'Unauthorized' }, 401);
 
-    if (user.app_metadata?.role !== 'admin') return json({ error: 'Admin only' }, 403);
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!profile?.is_admin) return json({ error: 'Admin only' }, 403);
 
     const { reservation_id } = await req.json();
     if (!reservation_id) return json({ error: 'reservation_id required' }, 400);
