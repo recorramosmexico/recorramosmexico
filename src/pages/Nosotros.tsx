@@ -173,7 +173,7 @@ export default function Nosotros() {
               Trabajamos junto a empresas líderes del sector turístico para ofrecerte las mejores experiencias y opciones de viaje.
             </p>
           </div>
-          <div className="flex flex-wrap justify-center gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
               {
                 name: 'ToursRed',
@@ -195,21 +195,23 @@ export default function Nosotros() {
               },
             ].map((partner) => {
               const card = (
-                <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-[#E8670A]/30 transition-all duration-300 text-center flex flex-col items-center w-72">
-                  <div className="mb-5 flex justify-center items-center h-20 w-full">
+                <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-[#E8670A]/30 transition-all duration-300 flex flex-col items-center text-center h-full min-h-[260px]">
+                  <div className="flex justify-center items-center h-28 w-full mb-4">
                     <img
                       src={partner.logo}
                       alt={partner.name}
-                      className="max-h-16 max-w-[180px] object-contain"
+                      className="max-h-24 max-w-[200px] w-full object-contain"
                     />
                   </div>
                   <h3 className="text-lg font-black text-gray-900 mb-2">{partner.name}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{partner.description}</p>
-                  {partner.href && (
-                    <span className="mt-4 inline-flex items-center gap-1 text-[#E8670A] text-xs font-semibold uppercase tracking-wide">
-                      Ver perfil &rarr;
-                    </span>
-                  )}
+                  <p className="text-gray-500 text-sm leading-relaxed flex-1">{partner.description}</p>
+                  <div className="mt-4 h-5">
+                    {partner.href && (
+                      <span className="inline-flex items-center gap-1 text-[#E8670A] text-xs font-semibold uppercase tracking-wide">
+                        Ver perfil &rarr;
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
               return partner.href ? (
@@ -223,7 +225,7 @@ export default function Nosotros() {
                   {card}
                 </a>
               ) : (
-                <div key={partner.name}>{card}</div>
+                <div key={partner.name} className="block">{card}</div>
               );
             })}
           </div>
