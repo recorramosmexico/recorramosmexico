@@ -161,8 +161,77 @@ export default function Nosotros() {
         </div>
       </section>
 
-      {/* Team */}
+      {/* Partners */}
       <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <p className="text-[#E8670A] font-semibold text-sm uppercase tracking-wider mb-2">
+              Alianzas Estratégicas
+            </p>
+            <h2 className="text-3xl md:text-4xl font-black text-gray-900">Socios y Aliados Comerciales</h2>
+            <p className="text-gray-500 mt-3 max-w-xl mx-auto text-sm">
+              Trabajamos junto a empresas líderes del sector turístico para ofrecerte las mejores experiencias y opciones de viaje.
+            </p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-8">
+            {[
+              {
+                name: 'ToursRed',
+                logo: '/images/partners/Logo_Transparente.jpg',
+                href: 'https://toursredmx.netlify.app/agencies/recorramosmexico',
+                description: 'Plataforma de distribución de tours para agencias de viaje.',
+              },
+              {
+                name: 'MegaTravel',
+                logo: '/images/partners/mega-travel.jpg',
+                href: 'https://viaje.ly/recorramos-mexico',
+                description: 'Mayorista turístico con amplia red de servicios en México y el mundo.',
+              },
+              {
+                name: 'PriceAgencies',
+                logo: '/images/partners/Logo-PriceAgencies.png',
+                href: null,
+                description: 'Herramienta de cotización y gestión para agencias de viaje.',
+              },
+            ].map((partner) => {
+              const card = (
+                <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-[#E8670A]/30 transition-all duration-300 text-center flex flex-col items-center w-72">
+                  <div className="mb-5 flex justify-center items-center h-20 w-full">
+                    <img
+                      src={partner.logo}
+                      alt={partner.name}
+                      className="max-h-16 max-w-[180px] object-contain"
+                    />
+                  </div>
+                  <h3 className="text-lg font-black text-gray-900 mb-2">{partner.name}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{partner.description}</p>
+                  {partner.href && (
+                    <span className="mt-4 inline-flex items-center gap-1 text-[#E8670A] text-xs font-semibold uppercase tracking-wide">
+                      Ver perfil &rarr;
+                    </span>
+                  )}
+                </div>
+              );
+              return partner.href ? (
+                <a
+                  key={partner.name}
+                  href={partner.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block group"
+                >
+                  {card}
+                </a>
+              ) : (
+                <div key={partner.name}>{card}</div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Team */}
+      <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="text-[#E8670A] font-semibold text-sm uppercase tracking-wider mb-2">
