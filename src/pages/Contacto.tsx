@@ -23,19 +23,21 @@ export default function Contacto() {
 
   const onSubmit = async (data: ContactForm) => {
     setSubmitting(true);
-    await supabase.from('reviews').insert({
-      customer_name: data.name,
-      comment_es: `[Contacto] ${data.subject}: ${data.message}`,
-      rating: 5,
-      is_approved: false,
-    });
-    // Send email notification to admin
-    sendEmail('contact', 'contacto@recorramosmexico.com.mx', {
-      name: data.name,
+    await supabase.from('inquiries').insert({
+      tipo: 'contacto',
+      nombre: data.name,
       email: data.email,
-      phone: data.phone || '',
-      subject: data.subject,
-      message: data.message,
+      telefono: data.phone || '',
+      asunto: data.subject,
+      mensaje: data.message,
+    });
+    sendEmail('inquiry', 'contacto@recorramosmexico.com.mx', {
+      tipo: 'contacto',
+      nombre: data.name,
+      email: data.email,
+      telefono: data.phone || '',
+      asunto: data.subject,
+      mensaje: data.message,
     });
     setSubmitting(false);
     setSubmitted(true);

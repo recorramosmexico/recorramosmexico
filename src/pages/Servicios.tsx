@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { Bus, Compass, Ticket, Check, Send, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { sendEmail } from '../lib/email';
 
 const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '525623872050';
+const ADMIN_EMAIL = 'contacto@recorramosmexico.com.mx';
 
 export default function Servicios() {
   const { t } = useTranslation();
@@ -15,29 +17,43 @@ export default function Servicios() {
   const customForm = useForm();
 
   const handleTransport = async (data: Record<string, string>) => {
-    await supabase.from('reservations').insert({
-      customer_name: data.name || 'N/A',
+    const mensaje = `Origen: ${data.origin}\nDestino: ${data.destination}\nFecha: ${data.date}\nPasajeros: ${data.passengers}\nDetalles: ${data.details || 'N/A'}`;
+    await supabase.from('inquiries').insert({
+      tipo: 'transporte',
+      nombre: data.name || 'N/A',
       email: data.email || 'N/A',
-      phone: data.phone || 'N/A',
-      travelers: parseInt(data.passengers) || 1,
-      departure_date: data.date || '',
-      total_price_mxn: 0,
-      payment_status: 'pending',
-      notes: `TRANSPORTE: Origen: ${data.origin}, Destino: ${data.destination}, Detalles: ${data.details || 'N/A'}`,
+      telefono: data.phone || '',
+      asunto: `Transporte: ${data.origin} → ${data.destination}`,
+      mensaje,
+    });
+    sendEmail('inquiry', ADMIN_EMAIL, {
+      tipo: 'transporte',
+      nombre: data.name || 'N/A',
+      email: data.email || 'N/A',
+      telefono: data.phone || '',
+      asunto: `Transporte: ${data.origin} → ${data.destination}`,
+      mensaje,
     });
     setTransportSent(true);
   };
 
   const handleCustom = async (data: Record<string, string>) => {
-    await supabase.from('reservations').insert({
-      customer_name: data.name || 'N/A',
+    const mensaje = `Destino: ${data.destination}\nFechas: ${data.date || 'N/A'}\nPersonas: ${data.groupSize}\nPresupuesto: ${data.budget || 'N/A'}\nDetalles: ${data.details || 'N/A'}`;
+    await supabase.from('inquiries').insert({
+      tipo: 'tour_personalizado',
+      nombre: data.name || 'N/A',
       email: data.email || 'N/A',
-      phone: data.phone || 'N/A',
-      travelers: parseInt(data.groupSize) || 1,
-      departure_date: data.date || '',
-      total_price_mxn: 0,
-      payment_status: 'pending',
-      notes: `TOUR PERSONALIZADO: Destino: ${data.destination}, Presupuesto: ${data.budget || 'N/A'}, Detalles: ${data.details || 'N/A'}`,
+      telefono: data.phone || '',
+      asunto: `Tour personalizado: ${data.destination}`,
+      mensaje,
+    });
+    sendEmail('inquiry', ADMIN_EMAIL, {
+      tipo: 'tour_personalizado',
+      nombre: data.name || 'N/A',
+      email: data.email || 'N/A',
+      telefono: data.phone || '',
+      asunto: `Tour personalizado: ${data.destination}`,
+      mensaje,
     });
     setCustomSent(true);
   };

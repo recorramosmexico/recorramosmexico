@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_confirmed";
+  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_confirmed" | "inquiry" | "inquiry_reply";
   to: string;
   data: Record<string, string | number>;
 }
@@ -238,6 +238,53 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
         subject,
         html_body: buildHtml("Nueva Reserva Recibida", body, logoUrl),
         text_body: buildText(subject, `Nueva reserva:\n\nTour: ${data.tour_title}\nCliente: ${data.customer_name}\nEmail: ${data.email}\nTeléfono: ${data.phone}\nFecha: ${data.departure_date}\nViajeros: ${data.travelers}\nTotal: $${total} MXN`),
+      };
+    }
+
+    case "inquiry": {
+      const tipoLabel: Record<string, string> = {
+        transporte: "Solicitud de Transporte",
+        tour_personalizado: "Solicitud de Tour Personalizado",
+        contacto: "Mensaje de Contacto",
+      };
+      const tipoTexto = tipoLabel[String(data.tipo)] || "Nueva Solicitud";
+      const subject = `Nueva solicitud: ${tipoTexto} — ${data.nombre}`;
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 4px;"><strong>Tipo de solicitud:</strong> ${tipoTexto}</p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 4px;"><strong>Nombre:</strong> ${data.nombre}</p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 4px;"><strong>Email:</strong> ${data.email}</p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 4px;"><strong>Teléfono:</strong> ${data.telefono || "—"}</p>
+        ${data.asunto ? `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;"><strong>Asunto:</strong> ${data.asunto}</p>` : ""}
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px 20px;margin-top:8px;">
+          <p style="margin:0 0 6px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Mensaje</p>
+          <p style="margin:0;color:#374151;font-size:15px;line-height:1.7;white-space:pre-wrap;">${data.mensaje}</p>
+        </div>`;
+      return {
+        subject,
+        html_body: buildHtml("Nueva Solicitud Recibida", body, logoUrl),
+        text_body: buildText(subject, `Tipo: ${tipoTexto}\nNombre: ${data.nombre}\nEmail: ${data.email}\nTeléfono: ${data.telefono || "—"}${data.asunto ? `\nAsunto: ${data.asunto}` : ""}\n\nMensaje:\n${data.mensaje}`),
+      };
+    }
+
+    case "inquiry_reply": {
+      const subject = `Respuesta de Recorramos México — ${data.asunto || "tu solicitud"}`;
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Hola <strong>${data.nombre}</strong>,
+        </p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Hemos recibido tu solicitud y este es nuestro respuesta:
+        </p>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px 20px;margin:0 0 20px;">
+          <p style="margin:0;color:#374151;font-size:15px;line-height:1.7;white-space:pre-wrap;">${data.reply}</p>
+        </div>
+        ${data.mensaje_original ? `<div style="background:#fff7ed;border-left:4px solid #E8670A;padding:12px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;">
+          <p style="margin:0 0 4px;color:#92400e;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Tu solicitud original</p>
+          <p style="margin:0;color:#92400e;font-size:13px;line-height:1.6;white-space:pre-wrap;">${data.mensaje_original}</p>
+        </div>` : ""}
+        <p style="color:#6b7280;font-size:13px;margin:0;">Si tienes más preguntas escribenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+      return {
+        subject,
+        html_body: buildHtml("Respuesta a tu Solicitud", body, logoUrl),
+        text_body: buildText(subject, `Hola ${data.nombre},\n\nHemos recibido tu solicitud y esta es nuestra respuesta:\n\n${data.reply}${data.mensaje_original ? `\n\n---\nTu solicitud original:\n${data.mensaje_original}` : ""}\n\nSi tienes mas preguntas escribenos a contacto@recorramosmexico.com.mx`),
       };
     }
 

@@ -29,6 +29,7 @@ const AdminTours = lazy(() => import('./pages/admin/AdminTours'));
 const AdminReservaciones = lazy(() => import('./pages/admin/AdminReservaciones'));
 const AdminBlog = lazy(() => import('./pages/admin/AdminBlog'));
 const AdminResenas = lazy(() => import('./pages/admin/AdminResenas'));
+const AdminInquiries = lazy(() => import('./pages/admin/AdminInquiries'));
 const AdminCategorias = lazy(() => import('./pages/admin/AdminCategorias'));
 const AdminConfiguracion = lazy(() => import('./pages/admin/AdminConfiguracion'));
 
@@ -83,6 +84,7 @@ function AppRoutes() {
               <Route path="reservaciones" element={<AdminReservaciones />} />
               <Route path="blog" element={<AdminBlog />} />
               <Route path="resenas" element={<AdminResenas />} />
+              <Route path="inquiries" element={<AdminInquiries />} />
               <Route path="categorias" element={<AdminCategorias />} />
               <Route path="configuracion" element={<AdminConfiguracion />} />
             </Route>
