@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard, Map, ClipboardList, BookOpen, Star,
-  LogOut, Menu, X, ChevronRight, Tag, Settings, MessageSquare
+  LogOut, Menu, X, ChevronRight, Tag, Settings, MessageSquare, Megaphone
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { path: '/admin/categorias', icon: <Tag size={20} />, label: 'Categorías' },
   { path: '/admin/reservaciones', icon: <ClipboardList size={20} />, label: 'Reservaciones' },
   { path: '/admin/inquiries', icon: <MessageSquare size={20} />, label: 'Cotizaciones' },
+  { path: '/admin/comunicados', icon: <Megaphone size={20} />, label: 'Comunicados' },
   { path: '/admin/blog', icon: <BookOpen size={20} />, label: 'Blog' },
   { path: '/admin/resenas', icon: <Star size={20} />, label: 'Reseñas' },
   { path: '/admin/configuracion', icon: <Settings size={20} />, label: 'Configuración' },
