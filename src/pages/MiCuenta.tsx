@@ -191,7 +191,7 @@ export default function MiCuenta() {
       const isBalance = mode === 'balance';
       const amountMxn = isBalance
         ? (res.remaining_balance_mxn ?? res.total_price_mxn)
-        : res.total_price_mxn;
+        : (res.deposit_amount_mxn ?? res.total_price_mxn);
 
       const productName = isBalance
         ? `${tourTitle} — ${lang === 'en' ? 'Balance payment' : 'Pago de saldo'}`
