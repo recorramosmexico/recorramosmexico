@@ -84,8 +84,27 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Admin ${callerId} deleting user ${user_id}`);
 
-    // Call the Supabase Auth admin API directly via fetch
-    // instead of supabase-js auth.admin.deleteUser()
+    // Clean up all public tables with FKs to auth.users BEFORE deleting the user
+    // to avoid FK constraint violations.
+    const cleanupTables: Array<{ table: string; column: string }> = [
+      { table: "reviews", column: "user_id" },
+      { table: "reservations", column: "user_id" },
+      { table: "broadcasts", column: "sent_by" },
+      { table: "stripe_customers", column: "user_id" },
+      { table: "profiles", column: "id" },
+    ];
+
+    for (const { table, column } of cleanupTables) {
+      const { error: delErr } = await adminClient
+        .from(table)
+        .delete()
+        .eq(column, user_id);
+      if (delErr) {
+        console.warn(`Cleanup ${table}.${column} failed (non-fatal):`, errMsg(delErr));
+      }
+    }
+
+    // Now delete the auth user via the Auth admin API
     const deleteRes = await fetch(`${supabaseUrl}/auth/v1/admin/users/${user_id}`, {
       method: "DELETE",
       headers: {
@@ -107,16 +126,6 @@ Deno.serve(async (req: Request) => {
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
-    }
-
-    // Also clean up the profile row in case FK cascade didn't get it
-    const { error: profileDelError } = await adminClient
-      .from("profiles")
-      .delete()
-      .eq("id", user_id);
-
-    if (profileDelError) {
-      console.warn("Profile cleanup failed (non-fatal):", errMsg(profileDelError));
     }
 
     console.log(`User ${user_id} deleted successfully`);
