@@ -3,27 +3,21 @@ export interface StripeProduct {
   priceId: string;
   name: string;
   description: string;
-  price_per_unit: number;
-  currency_symbol: string;
+  pricePerUnit: number;
+  currencySymbol: string;
+  currency: string;
   mode: 'payment' | 'subscription';
 }
 
-export const stripeProducts: StripeProduct[] = [
-  {
+export const STRIPE_PRODUCTS = {
+  VIAJE: {
     id: 'prod_UVRdf9FkZCyt0F',
     priceId: 'price_1TWQk5RTgyGuyvXO1kHCtKX0',
     name: 'Viaje',
-    description: 'Reserva tu viaje con nosotros',
-    price_per_unit: 1.00,
-    currency_symbol: 'MX$',
-    mode: 'payment'
-  }
-];
-
-export const getProductByPriceId = (priceId: string): StripeProduct | undefined => {
-  return stripeProducts.find(product => product.priceId === priceId);
-};
-
-export const getProductById = (id: string): StripeProduct | undefined => {
-  return stripeProducts.find(product => product.id === id);
-};
+    description: 'Reserva tu viaje con Recorramos México',
+    pricePerUnit: 1.00,
+    currencySymbol: 'MX$',
+    currency: 'mxn',
+    mode: 'payment' as const,
+  },
+} satisfies Record<string, StripeProduct>;
