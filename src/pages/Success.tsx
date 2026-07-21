@@ -1,200 +1,151 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Check, MapPin, Users, Calendar, ArrowRight, Clock, Banknote, Building2 } from 'lucide-react';
+import { CheckCircle, Home, ClipboardList, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useSEO } from '../hooks/useSEO';
 
-type PaymentMethod = 'card' | 'oxxo' | 'bank_transfer';
-
-interface ReservationDetails {
-  id: string;
-  tour_id: string;
-  customer_name: string;
-  travelers: number;
-  departure_date: string;
-  total_price_mxn: number;
-  tours: { title_es: string; title_en: string; destination: string } | null;
+interface OrderInfo {
+  checkout_session_id: string;
+  amount_total: number;
+  currency: string;
+  payment_status: string;
+  order_date: string;
 }
-
-const methodConfig: Record<
-  PaymentMethod,
-  { icon: React.ElementType; headerBg: string; iconBg: string; iconColor: string; title: string; subtitle: string; info: string | null }
-> = {
-  card: {
-    icon: Check,
-    headerBg: 'bg-gradient-to-br from-green-500 to-green-600',
-    iconBg: 'bg-white/20',
-    iconColor: 'text-white',
-    title: '¡Pago Exitoso!',
-    subtitle: 'Tu reserva ha sido confirmada',
-    info: null,
-  },
-  oxxo: {
-    icon: Banknote,
-    headerBg: 'bg-gradient-to-br from-amber-500 to-orange-500',
-    iconBg: 'bg-white/20',
-    iconColor: 'text-white',
-    title: 'Voucher OXXO Generado',
-    subtitle: 'Completa tu pago en cualquier tienda OXXO',
-    info: 'Revisa tu correo electrónico para encontrar el voucher con el código de barras. Tienes 3 días para realizar el pago en OXXO. Tu reserva quedará confirmada al recibir el pago.',
-  },
-  bank_transfer: {
-    icon: Building2,
-    headerBg: 'bg-gradient-to-br from-blue-500 to-blue-600',
-    iconBg: 'bg-white/20',
-    iconColor: 'text-white',
-    title: 'Transferencia SPEI Pendiente',
-    subtitle: 'Instrucciones enviadas a tu correo',
-    info: 'Revisa tu correo electrónico con las instrucciones para realizar la transferencia SPEI. Tienes 3 días para completar el pago. Tu reserva quedará confirmada al recibir la transferencia.',
-  },
-};
 
 export default function Success() {
   const [searchParams] = useSearchParams();
-  const reservationId = searchParams.get('reservation_id');
-  const method = (searchParams.get('method') ?? 'card') as PaymentMethod;
-  const [reservation, setReservation] = useState<ReservationDetails | null>(null);
+  const sessionId = searchParams.get('session_id');
+
+  const [order, setOrder] = useState<OrderInfo | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const config = methodConfig[method] ?? methodConfig.card;
-  const IconComponent = config.icon;
-
-  useSEO({
-    title: 'Pago Exitoso',
-    description: 'Tu reserva ha sido confirmada.',
-    path: '/success',
-    noindex: true,
-  });
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    const load = async () => {
-      if (!reservationId) { setLoading(false); return; }
+    if (!sessionId) {
+      setLoading(false);
+      return;
+    }
 
-      const { data } = await supabase
-        .from('reservations')
-        .select('id, tour_id, customer_name, travelers, departure_date, total_price_mxn, tours(title_es, title_en, destination)')
-        .eq('id', reservationId)
-        .maybeSingle();
+    const fetchOrder = async () => {
+      // Poll up to ~10 s for the webhook to write the order
+      for (let attempt = 0; attempt < 5; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
 
-      if (data) setReservation(data as ReservationDetails);
+        const { data, error } = await supabase
+          .from('stripe_user_orders')
+          .select('checkout_session_id, amount_total, currency, payment_status, order_date')
+          .eq('checkout_session_id', sessionId)
+          .maybeSingle();
+
+        if (!error && data) {
+          setOrder(data as OrderInfo);
+          setLoading(false);
+          return;
+        }
+      }
+
+      setNotFound(true);
       setLoading(false);
     };
-    load();
-  }, [reservationId]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
-        <div className="flex gap-1.5">
-          {[0, 1, 2].map((i) => (
-            <span key={i} className="w-3 h-3 bg-[#E8670A] rounded-full animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
-          ))}
-        </div>
-      </div>
-    );
-  }
+    fetchOrder();
+  }, [sessionId]);
 
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr + 'T12:00:00');
-    return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  };
+  const formatCurrency = (cents: number, currency: string) =>
+    new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: currency?.toUpperCase() ?? 'MXN',
+      minimumFractionDigits: 0,
+    }).format(cents / 100);
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-          {/* Header */}
-          <div className={`${config.headerBg} p-10 text-center`}>
-            <div className={`w-20 h-20 ${config.iconBg} rounded-full flex items-center justify-center mx-auto mb-4`}>
-              <IconComponent size={40} className={config.iconColor} strokeWidth={method === 'card' ? 3 : 2} />
-            </div>
-            <h1 className="text-2xl font-black text-white mb-2">{config.title}</h1>
-            <p className="text-white/80 text-sm">{config.subtitle}</p>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-orange-50 flex items-center justify-center px-4">
+      <div className="max-w-md w-full">
+        {loading ? (
+          <div className="bg-white rounded-2xl shadow-xl p-10 text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-orange-500 mx-auto mb-4" />
+            <p className="text-gray-600 font-medium">Confirmando tu pago…</p>
           </div>
-
-          <div className="p-8">
-            {/* Pending notice */}
-            {config.info && (
-              <div className="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-xl p-4 mb-6">
-                <Clock size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-700 leading-relaxed">{config.info}</p>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-8 py-10 text-center">
+              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-12 h-12 text-white" />
               </div>
-            )}
+              <h1 className="text-2xl font-bold text-white mb-1">¡Pago exitoso!</h1>
+              <p className="text-green-100 text-sm">Tu reserva está confirmada</p>
+            </div>
 
-            {/* Reservation details */}
-            {reservation ? (
-              <div className="space-y-4 mb-8">
-                <h2 className="font-black text-gray-900 text-lg">
-                  {reservation.tours?.title_es || 'Tour reservado'}
-                </h2>
-
-                <div className="space-y-3">
-                  {reservation.tours?.destination && (
-                    <div className="flex items-center gap-3 text-sm text-gray-600">
-                      <div className="w-8 h-8 bg-[#E8670A]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <MapPin size={16} className="text-[#E8670A]" />
-                      </div>
-                      <span>{reservation.tours.destination}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-3 text-sm text-gray-600">
-                    <div className="w-8 h-8 bg-[#E8670A]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Users size={16} className="text-[#E8670A]" />
-                    </div>
-                    <span>{reservation.travelers} {reservation.travelers === 1 ? 'viajero' : 'viajeros'}</span>
+            {/* Body */}
+            <div className="px-8 py-7 space-y-5">
+              {order ? (
+                <div className="bg-gray-50 rounded-xl p-5 space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Total pagado</span>
+                    <span className="font-bold text-gray-900 text-base">
+                      {formatCurrency(order.amount_total, order.currency)}
+                    </span>
                   </div>
-                  {reservation.departure_date && (
-                    <div className="flex items-center gap-3 text-sm text-gray-600">
-                      <div className="w-8 h-8 bg-[#E8670A]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Calendar size={16} className="text-[#E8670A]" />
-                      </div>
-                      <span>{formatDate(reservation.departure_date)}</span>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Estado</span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-semibold capitalize">
+                      <CheckCircle className="w-3 h-3" />
+                      {order.payment_status === 'paid' ? 'Pagado' : order.payment_status}
+                    </span>
+                  </div>
+                  {order.order_date && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Fecha</span>
+                      <span className="text-gray-700">
+                        {new Date(order.order_date).toLocaleDateString('es-MX', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  {order.checkout_session_id && (
+                    <div className="pt-2 border-t border-gray-200">
+                      <p className="text-xs text-gray-400 break-all">
+                        Ref: {order.checkout_session_id.slice(0, 24)}…
+                      </p>
                     </div>
                   )}
                 </div>
-
-                <div className="bg-orange-50 rounded-xl p-4 flex justify-between items-center mt-2">
-                  <span className="text-sm font-semibold text-gray-700">
-                    {method === 'card' ? 'Total pagado' : 'Total a pagar'}
-                  </span>
-                  <span className="text-xl font-black text-[#E8670A]">
-                    ${reservation.total_price_mxn.toLocaleString('es-MX')} MXN
-                  </span>
+              ) : notFound ? (
+                <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-700">
+                    Tu pago fue procesado. El comprobante estará disponible en unos minutos en tu cuenta.
+                  </p>
                 </div>
+              ) : null}
 
-                <p className="text-xs text-gray-400 text-center">
-                  {method === 'card'
-                    ? 'Recibirás un correo de confirmación con todos los detalles.'
-                    : 'Recibirás un correo con las instrucciones de pago y la confirmación final.'}
-                </p>
-              </div>
-            ) : (
-              <div className="text-center mb-8">
-                <p className="text-gray-600 text-sm">
-                  {method === 'card'
-                    ? 'Tu pago fue procesado correctamente. En breve recibirás un correo de confirmación.'
-                    : 'Tu reserva está registrada. Revisa tu correo para las instrucciones de pago.'}
-                </p>
-              </div>
-            )}
+              <p className="text-sm text-gray-500 text-center leading-relaxed">
+                Recibirás un correo de confirmación con los detalles de tu viaje.
+                Nuestro equipo se pondrá en contacto contigo a la brevedad.
+              </p>
 
-            <div className="flex flex-col gap-3">
-              <Link
-                to="/tours"
-                className="flex items-center justify-center gap-2 w-full py-3.5 bg-[#E8670A] text-white font-bold rounded-xl hover:bg-[#B8520A] transition-colors"
-              >
-                Explorar más tours
-                <ArrowRight size={18} />
-              </Link>
-              <Link
-                to="/"
-                className="flex items-center justify-center w-full py-3.5 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
-              >
-                Ir al inicio
-              </Link>
+              <div className="flex flex-col gap-3 pt-2">
+                <Link
+                  to="/mi-cuenta"
+                  className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl px-5 py-3 transition-colors"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  Ver mis reservaciones
+                </Link>
+                <Link
+                  to="/"
+                  className="flex items-center justify-center gap-2 border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl px-5 py-3 transition-colors"
+                >
+                  <Home className="w-4 h-4" />
+                  Ir al inicio
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

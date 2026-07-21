@@ -1,74 +1,44 @@
-import { Link, useSearchParams } from 'react-router-dom';
-import { XCircle, ArrowLeft, MessageCircle } from 'lucide-react';
-import { useSEO } from '../hooks/useSEO';
-
-const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '525623872050';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { XCircle, ArrowLeft, Home } from 'lucide-react';
 
 export default function Cancel() {
-  const [searchParams] = useSearchParams();
-  const reservationId = searchParams.get('reservation_id');
-
-  useSEO({
-    title: 'Pago Cancelado',
-    description: 'El proceso de pago fue cancelado.',
-    path: '/cancel',
-    noindex: true,
-  });
+  const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-br from-gray-700 to-gray-900 p-10 text-center">
-            <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <XCircle size={40} className="text-white/80" />
-            </div>
-            <h1 className="text-3xl font-black text-white mb-2">Pago Cancelado</h1>
-            <p className="text-gray-400 text-sm">No se realizó ningún cargo</p>
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-gray-50 flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-red-500 to-rose-600 px-8 py-10 text-center">
+          <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <XCircle className="w-12 h-12 text-white" />
           </div>
+          <h1 className="text-2xl font-bold text-white mb-1">Pago cancelado</h1>
+          <p className="text-red-100 text-sm">No se realizó ningún cargo</p>
+        </div>
 
-          <div className="p-8 text-center">
-            <p className="text-gray-600 text-sm mb-2">
-              Cancelaste el proceso de pago. Tu reserva quedó guardada pero pendiente de pago.
-            </p>
-            <p className="text-gray-500 text-xs mb-8">
-              Puedes volver a intentarlo o contactarnos por WhatsApp si tienes alguna duda.
-            </p>
+        {/* Body */}
+        <div className="px-8 py-7 space-y-5">
+          <p className="text-sm text-gray-500 text-center leading-relaxed">
+            Cancelaste el proceso de pago. Tu reserva no ha sido confirmada.
+            Puedes intentarlo de nuevo cuando lo desees.
+          </p>
 
-            <div className="flex flex-col gap-3">
-              {reservationId ? (
-                <Link
-                  to="/tours"
-                  className="flex items-center justify-center gap-2 w-full py-3.5 bg-[#E8670A] text-white font-bold rounded-xl hover:bg-[#B8520A] transition-colors"
-                >
-                  <ArrowLeft size={18} />
-                  Volver a los tours
-                </Link>
-              ) : (
-                <Link
-                  to="/tours"
-                  className="flex items-center justify-center gap-2 w-full py-3.5 bg-[#E8670A] text-white font-bold rounded-xl hover:bg-[#B8520A] transition-colors"
-                >
-                  <ArrowLeft size={18} />
-                  Ver todos los tours
-                </Link>
-              )}
-              <a
-                href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('¡Hola! Tuve un problema al intentar pagar mi reserva. ¿Me pueden ayudar?')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3.5 bg-[#25D366] text-white font-semibold rounded-xl hover:bg-[#1EBE57] transition-colors"
-              >
-                <MessageCircle size={18} />
-                Contactar por WhatsApp
-              </a>
-              <Link
-                to="/"
-                className="flex items-center justify-center w-full py-3.5 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
-              >
-                Ir al inicio
-              </Link>
-            </div>
+          <div className="flex flex-col gap-3 pt-2">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl px-5 py-3 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Volver e intentar de nuevo
+            </button>
+            <Link
+              to="/"
+              className="flex items-center justify-center gap-2 border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl px-5 py-3 transition-colors"
+            >
+              <Home className="w-4 h-4" />
+              Ir al inicio
+            </Link>
           </div>
         </div>
       </div>
