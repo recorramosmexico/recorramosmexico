@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Calendar, Tag, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { BlogPost } from '../types';
+import { useSEO } from '../hooks/useSEO';
 
 type BlogCategory = 'all' | 'destinos' | 'festivales' | 'tips' | 'cultura';
 
@@ -44,6 +45,14 @@ export default function Blog() {
 
   const featuredPost = filtered[0];
   const restPosts = filtered.slice(1);
+
+  useSEO({
+    title: 'Blog de Viajes | Recorramos México',
+    description:
+      'Guías de viaje, tips, festivales y cultura de México y el mundo. Inspírate con nuestros artículos de destinos nacionales e internacionales para tu próxima aventura.',
+    path: '/blog',
+    image: '/Logo_Bandera.jpg',
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">

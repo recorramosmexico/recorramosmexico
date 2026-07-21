@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSEO } from '../hooks/useSEO';
 
 const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '525623872050';
 const BASE_URL = 'https://www.megatravel.com.mx/tools';
@@ -31,6 +32,14 @@ export default function Paquetes() {
   const whatsappMsg = lang === 'en'
     ? 'Hello! I\'m interested in a Mega Travel package I saw on your website.'
     : '¡Hola! Me interesa un paquete de Mega Travel que vi en su sitio web.';
+
+  useSEO({
+    title: 'Paquetes de Viaje | Recorramos México y el Mundo',
+    description:
+      'Paquetes de viaje nacionales e internacionales: Europa, Asia, Caribe, Cruceros y más. Ofertas exclusivas en colaboración con Mega Travel. ¡Cotiza tu paquete!',
+    path: '/paquetes',
+    image: '/Logo_Colores.jpg',
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">

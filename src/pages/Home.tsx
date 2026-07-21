@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Mountain, Music, Waves, Star, Globe, Bus, Compass, Ticket, ChevronRight, Quote } from 'lucide-react';
@@ -6,6 +6,8 @@ import { supabase } from '../lib/supabase';
 import type { Category, Tour, Review } from '../types';
 import TourCard from '../components/ui/TourCard';
 import StarRating from '../components/ui/StarRating';
+import { useSEO } from '../hooks/useSEO';
+import { organizationSchema, websiteSchema, aggregateRatingSchema } from '../lib/structuredData';
 
 const ICON_MAP: Record<string, React.ReactNode> = {
   Mountain: <Mountain size={32} />,
@@ -47,6 +49,22 @@ export default function Home() {
     };
     loadData();
   }, []);
+
+  const jsonLd = useMemo(() => {
+    const schemas: object[] = [organizationSchema(), websiteSchema()];
+    const rating = aggregateRatingSchema(reviews);
+    if (rating) schemas.push(rating);
+    return schemas;
+  }, [reviews]);
+
+  useSEO({
+    title: 'Recorramos México | Tours Nacionales e Internacionales en Grupo',
+    description:
+      'Agencia de viajes en grupo desde el Estado de México. Tours nacionales e internacionales: playas, festivales, ferias, aventura y más. ¡Reserva tu próxima aventura!',
+    path: '/',
+    image: '/Logo_Bandera.jpg',
+    jsonLd,
+  });
 
   return (
     <div className="min-h-screen">

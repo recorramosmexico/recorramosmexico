@@ -5,6 +5,8 @@ import { Search, SlidersHorizontal, X, Tag } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Category, Tour } from '../types';
 import TourCard from '../components/ui/TourCard';
+import { useSEO } from '../hooks/useSEO';
+import { websiteSchema } from '../lib/structuredData';
 
 const MONTHS_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -98,6 +100,15 @@ export default function Tours() {
 
   const hasActiveFilters = filters.category || filters.search || filters.maxPrice || filters.month || filters.duration;
   const months = lang === 'en' ? MONTHS_EN : MONTHS_ES;
+
+  useSEO({
+    title: 'Tours y Excursiones 2026 | Recorramos México',
+    description:
+      'Descubre los mejores tours y excursiones en grupo desde México. Playas, pirámides, festivales, aventura y más. Filtra por fecha, precio y duración. ¡Reserva online!',
+    path: '/tours',
+    image: '/Logo_Bandera.jpg',
+    jsonLd: websiteSchema(),
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">

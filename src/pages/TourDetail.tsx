@@ -12,6 +12,8 @@ import { useAuth } from '../hooks/useAuth';
 import { sendEmail } from '../lib/email';
 import type { Tour, BookingFormData } from '../types';
 import TourCard from '../components/ui/TourCard';
+import { useSEO } from '../hooks/useSEO';
+import { tourSchema, breadcrumbSchema } from '../lib/structuredData';
 
 const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '525623872050';
 
@@ -256,26 +258,28 @@ export default function TourDetail() {
   const includes = lang === 'en' ? tour.includes_en : tour.includes_es;
   const excludes = lang === 'en' ? tour.excludes_en : tour.excludes_es;
 
+  const seoTitle = `${title} desde ${tour.price_mxn.toLocaleString('es-MX')} MXN`;
+  const seoDescription = description.slice(0, 155);
+  const seoJsonLd = [
+    tourSchema(tour, lang),
+    breadcrumbSchema([
+      { name: 'Inicio', path: '/' },
+      { name: 'Tours', path: '/tours' },
+      { name: title, path: `/tours/${tour.slug}` },
+    ]),
+  ];
+
+  useSEO({
+    title: seoTitle,
+    description: seoDescription,
+    path: `/tours/${tour.slug}`,
+    image: tour.image_urls?.[0] || '/Logo_Bandera.jpg',
+    type: 'product',
+    jsonLd: seoJsonLd,
+  });
+
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
-      {/* Schema.org structured data */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "TouristAttraction",
-        "name": title,
-        "description": description,
-        "url": window.location.href,
-        "image": tour.image_urls?.[0],
-        "touristType": "GroupTour",
-        "geo": { "@type": "GeoCoordinates" },
-        "offers": {
-          "@type": "Offer",
-          "price": tour.price_mxn,
-          "priceCurrency": "MXN",
-          "availability": "https://schema.org/InStock",
-        },
-      })}} />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center gap-3 mb-6">
           <Link to="/tours" className="flex items-center gap-2 text-gray-500 hover:text-[#E8670A] transition-colors text-sm font-medium">

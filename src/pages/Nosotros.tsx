@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Shield, Users, Heart, Globe } from 'lucide-react';
+import { useSEO } from '../hooks/useSEO';
+import { organizationSchema } from '../lib/structuredData';
 
 const TEAM = [
   { name: 'Trinidad Gil Martinez', role: 'Coordinador', img: '/images/team/TrinidadGilMartinez.jpeg' },

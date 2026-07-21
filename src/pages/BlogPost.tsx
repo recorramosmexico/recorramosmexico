@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Calendar, Tag, ArrowLeft, Share2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { BlogPost as BlogPostType } from '../types';
+import { useSEO } from '../hooks/useSEO';
+import { blogPostSchema, breadcrumbSchema } from '../lib/structuredData';
 
 export default function BlogPost() {
   const { slug } = useParams<{ slug: string }>();
@@ -65,6 +67,23 @@ export default function BlogPost() {
   const title = lang === 'en' ? post.title_en : post.title_es;
   const summary = lang === 'en' ? post.summary_en : post.summary_es;
   const content = lang === 'en' ? post.content_en : post.content_es;
+
+  useSEO({
+    title,
+    description: summary.slice(0, 155),
+    path: `/blog/${post.slug}`,
+    image: post.cover_image || '/Logo_Bandera.jpg',
+    type: 'article',
+    publishedTime: post.created_at,
+    jsonLd: [
+      blogPostSchema(post, lang),
+      breadcrumbSchema([
+        { name: 'Inicio', path: '/' },
+        { name: 'Blog', path: '/blog' },
+        { name: title, path: `/blog/${post.slug}` },
+      ]),
+    ],
+  });
 
   return (
     <div className="min-h-screen bg-white pt-20">
