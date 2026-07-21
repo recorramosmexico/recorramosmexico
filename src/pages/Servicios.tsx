@@ -4,6 +4,8 @@ import { useForm } from 'react-hook-form';
 import { Bus, Compass, Ticket, Check, Send, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { sendEmail } from '../lib/email';
+import { useSEO } from '../hooks/useSEO';
+import { serviceSchema } from '../lib/structuredData';
 
 const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '525623872050';
 const ADMIN_EMAIL = 'contacto@recorramosmexico.com.mx';
@@ -15,6 +17,19 @@ export default function Servicios() {
 
   const transportForm = useForm();
   const customForm = useForm();
+
+  useSEO({
+    title: 'Servicios | Recorramos México',
+    description:
+      'Transporte privado en grupo, tours personalizados y boletos para eventos. Cotiza tu viaje a medida con Recorramos México desde el Estado de México.',
+    path: '/servicios',
+    image: '/Logo_Colores.jpg',
+    jsonLd: [
+      serviceSchema('Transporte Privado', 'Renta de autobuses y vans para grupos desde el Estado de México.', '/servicios#transporte'),
+      serviceSchema('Tours Personalizados', 'Diseñamos itinerarios a medida para tu grupo.', '/servicios#personalizado'),
+      serviceSchema('Boletos para Eventos', 'Venta de boletos para conciertos, festivales y eventos.', '/servicios#boletos'),
+    ],
+  });
 
   const handleTransport = async (data: Record<string, string>) => {
     const mensaje = `Origen: ${data.origin}\nDestino: ${data.destination}\nFecha: ${data.date}\nPasajeros: ${data.passengers}\nDetalles: ${data.details || 'N/A'}`;

@@ -1,11 +1,19 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { XCircle, ArrowLeft, MessageCircle } from 'lucide-react';
+import { useSEO } from '../hooks/useSEO';
 
 const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '525623872050';
 
 export default function Cancel() {
   const [searchParams] = useSearchParams();
   const reservationId = searchParams.get('reservation_id');
+
+  useSEO({
+    title: 'Pago Cancelado',
+    description: 'El proceso de pago fue cancelado.',
+    path: '/cancel',
+    noindex: true,
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center px-4 py-12">

@@ -4,6 +4,8 @@ import { useForm } from 'react-hook-form';
 import { MapPin, Mail, Phone, Clock, Send, CheckCircle, Instagram, Facebook } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { sendEmail } from '../lib/email';
+import { useSEO } from '../hooks/useSEO';
+import { organizationSchema } from '../lib/structuredData';
 
 const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '525623872050';
 
@@ -20,6 +22,15 @@ export default function Contacto() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { register, handleSubmit, formState: { errors }, reset } = useForm<ContactForm>();
+
+  useSEO({
+    title: 'Contacto | Recorramos México',
+    description:
+      'Contáctanos para reservar tu próximo viaje en grupo. Estamos en Tlalnepantla, Estado de México. WhatsApp, teléfono y correo disponibles.',
+    path: '/contacto',
+    image: '/Logo_Naranja.jpeg',
+    jsonLd: organizationSchema(),
+  });
 
   const onSubmit = async (data: ContactForm) => {
     setSubmitting(true);

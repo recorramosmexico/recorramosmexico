@@ -4,6 +4,7 @@ import { Mail, Lock, Eye, EyeOff, User, MapPin } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { GoogleAuthButton } from '../components/auth/GoogleAuthButton';
 import { sendEmail } from '../lib/email';
+import { useSEO } from '../hooks/useSEO';
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -14,6 +15,13 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useSEO({
+    title: 'Crear Cuenta',
+    description: 'Crea tu cuenta en Recorramos México para reservar y gestionar tus viajes.',
+    path: '/signup',
+    noindex: true,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

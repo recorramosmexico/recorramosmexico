@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+import { useSEO } from '../hooks/useSEO';
 
 const EXPIRY_HOURS = 72;
 
@@ -60,6 +61,13 @@ export default function MiCuenta() {
   const lang = i18n.language === 'en' ? 'en' : 'es';
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+
+  useSEO({
+    title: 'Mi Cuenta',
+    description: 'Gestiona tus reservaciones y perfil en Recorramos México.',
+    path: '/mi-cuenta',
+    noindex: true,
+  });
 
   const [activeTab, setActiveTab] = useState<Tab>('reservations');
   const [reservations, setReservations] = useState<Reservation[]>([]);

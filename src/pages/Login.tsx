@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, MapPin } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { GoogleAuthButton } from '../components/auth/GoogleAuthButton';
+import { useSEO } from '../hooks/useSEO';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -13,6 +14,13 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useSEO({
+    title: 'Iniciar Sesión',
+    description: 'Inicia sesión en Recorramos México para ver tus reservaciones.',
+    path: '/login',
+    noindex: true,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

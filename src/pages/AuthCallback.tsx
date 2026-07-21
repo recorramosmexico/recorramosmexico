@@ -2,9 +2,17 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { sendEmail } from '../lib/email'
+import { useSEO } from '../hooks/useSEO'
 
 export default function AuthCallback() {
   const navigate = useNavigate()
+
+  useSEO({
+    title: 'Verificando sesión...',
+    description: 'Verificando tu sesión.',
+    path: '/auth/callback',
+    noindex: true,
+  });
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

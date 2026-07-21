@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Check, MapPin, Users, Calendar, ArrowRight, Clock, Banknote, Building2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useSEO } from '../hooks/useSEO';
 
 type PaymentMethod = 'card' | 'oxxo' | 'bank_transfer';
 
@@ -57,6 +58,13 @@ export default function Success() {
 
   const config = methodConfig[method] ?? methodConfig.card;
   const IconComponent = config.icon;
+
+  useSEO({
+    title: 'Pago Exitoso',
+    description: 'Tu reserva ha sido confirmada.',
+    path: '/success',
+    noindex: true,
+  });
 
   useEffect(() => {
     const load = async () => {

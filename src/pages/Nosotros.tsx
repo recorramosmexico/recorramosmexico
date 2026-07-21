@@ -14,6 +14,15 @@ const TEAM = [
 export default function Nosotros() {
   const { t } = useTranslation();
 
+  useSEO({
+    title: 'Nosotros | Recorramos México',
+    description:
+      'Agencia de viajes de grupo certificada por SECTUR, FEMATUR y AMAV CDMX. Conoce al equipo detrás de Recorramos México y nuestra pasión por crear experiencias inolvidables.',
+    path: '/nosotros',
+    image: '/Logo_Bandera.jpg',
+    jsonLd: organizationSchema(),
+  });
+
   return (
     <div className="min-h-screen bg-white pt-20">
       <div className="bg-[#1A1A1A] py-20 px-4 relative overflow-hidden">
