@@ -13,11 +13,15 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+    // Admin client (service role) — used for admin.deleteUser and bypassing RLS
+    const adminClient = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // Verify caller identity from Authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -27,10 +31,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: authError } = await supabase.auth.getUser(token);
+    const { data: userData, error: authError } = await adminClient.auth.getUser(token);
 
     if (authError || !userData.user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      return new Response(JSON.stringify({ error: "Unauthorized", detail: authError?.message }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -38,20 +42,22 @@ Deno.serve(async (req: Request) => {
 
     const callerId = userData.user.id;
 
-    const { data: profile } = await supabase
+    // Check caller is admin
+    const { data: profile, error: profileError } = await adminClient
       .from("profiles")
       .select("is_admin")
       .eq("id", callerId)
       .maybeSingle();
 
-    if (!profile?.is_admin) {
-      return new Response(JSON.stringify({ error: "Forbidden — admin access required" }), {
+    if (profileError || !profile?.is_admin) {
+      return new Response(JSON.stringify({ error: "Forbidden — admin access required", detail: profileError?.message }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { user_id } = await req.json();
+    const body = await req.json();
+    const user_id: string = body?.user_id;
 
     if (!user_id || typeof user_id !== "string") {
       return new Response(JSON.stringify({ error: "user_id is required" }), {
@@ -67,13 +73,14 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { error: deleteError } = await supabase.auth.admin.deleteUser(user_id);
+    const { error: deleteError } = await adminClient.auth.admin.deleteUser(user_id);
 
     if (deleteError) {
-      return new Response(JSON.stringify({ error: "Error deleting user", detail: deleteError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.error("deleteUser error:", deleteError);
+      return new Response(
+        JSON.stringify({ error: "Error al eliminar el usuario", detail: deleteError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(JSON.stringify({ success: true }), {

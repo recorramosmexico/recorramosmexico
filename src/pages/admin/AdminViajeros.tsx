@@ -232,7 +232,8 @@ export default function AdminViajeros() {
       const result = await response.json();
 
       if (!response.ok || result.error) {
-        setError(result.error || result.detail || `Error (${response.status})`);
+        const msg = [result.error, result.detail].filter(Boolean).join(': ');
+        setError(msg || `Error (${response.status})`);
         setDeleting(false);
         return;
       }
