@@ -598,7 +598,7 @@ export default function MiCuenta() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6" data-fields="birth-sex">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                     {lang === 'en' ? 'Date of birth' : 'Fecha de nacimiento'}
