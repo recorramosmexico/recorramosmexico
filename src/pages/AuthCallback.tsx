@@ -7,15 +7,45 @@ export default function AuthCallback() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        subscription.unsubscribe()
-        // Send welcome email only for newly created Google OAuth users
-        if (session.user.app_metadata?.provider === 'google' && !session.user.last_sign_in_at) {
-          const name = session.user.user_metadata?.full_name || session.user.email || ''
-          sendEmail('welcome', session.user.email!, { name, email: session.user.email! })
-        }
-        navigate('/mi-cuenta', { replace: true })
+        subscription.unsubscribe();
+
+        (async () => {
+          const user = session.user
+          const isGoogle = user.app_metadata?.provider === 'google'
+
+          // Pre-fill profile with whatever Google provides
+          if (isGoogle) {
+            const meta = user.user_metadata || {}
+            const fullName: string = meta.full_name || meta.name || ''
+            const phone: string = meta.phone || ''
+
+            // Upsert: if profile row already exists (returning user), only fill
+            // blank fields so manual edits are never overwritten.
+            const { data: existing } = await supabase
+              .from('profiles')
+              .select('full_name, phone')
+              .eq('id', user.id)
+              .maybeSingle()
+
+            await supabase.from('profiles').upsert({
+              id: user.id,
+              full_name: existing?.full_name || fullName || null,
+              phone: existing?.phone || phone || null,
+            })
+
+            // Welcome email only on first sign-in (no last_sign_in_at means brand new)
+            if (!user.last_sign_in_at && user.email) {
+              sendEmail('welcome', user.email, {
+                name: fullName || user.email,
+                email: user.email,
+              })
+            }
+          }
+
+          navigate('/mi-cuenta', { replace: true })
+        })()
       } else if (event === 'SIGNED_OUT') {
         subscription.unsubscribe()
         navigate('/login', { replace: true })
