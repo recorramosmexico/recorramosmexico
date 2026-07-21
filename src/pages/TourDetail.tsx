@@ -48,6 +48,9 @@ export default function TourDetail() {
       const { data } = await supabase.from('tours').select('*, categories(*)').eq('slug', slug).maybeSingle();
       if (data) {
         setTour(data);
+        if (data.departure_dates?.length === 1) {
+          setValue('departure_date', data.departure_dates[0]);
+        }
         const { data: related } = await supabase
           .from('tours')
           .select('*')
