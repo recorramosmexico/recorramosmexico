@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /mi-cuenta
+Disallow: /login
+Disallow: /signup
+Disallow: /success
+Disallow: /cancel
+Disallow: /auth/callback
+
+Sitemap: https://recorramosmexico.com/sitemap.xml
