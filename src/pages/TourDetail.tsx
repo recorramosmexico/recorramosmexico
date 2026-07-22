@@ -35,7 +35,7 @@ export default function TourDetail() {
   const [profilePrefilled, setProfilePrefilled] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'oxxo' | 'bank_transfer'>('card');
 
-  const { register, handleSubmit, watch, formState: { errors }, reset } = useForm<BookingFormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm<BookingFormData>({
     defaultValues: { travelers: 1 },
   });
 
