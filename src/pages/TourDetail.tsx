@@ -48,9 +48,6 @@ export default function TourDetail() {
       const { data } = await supabase.from('tours').select('*, categories(*)').eq('slug', slug).maybeSingle();
       if (data) {
         setTour(data);
-        if (data.departure_dates?.length === 1) {
-          setValue('departure_date', data.departure_dates[0]);
-        }
         const { data: related } = await supabase
           .from('tours')
           .select('*')
@@ -80,6 +77,7 @@ export default function TourDetail() {
         if (name || phone || email) {
           reset((prev) => ({
             ...prev,
+            departure_date: tour?.departure_dates?.length === 1 ? tour.departure_dates[0] : prev.departure_date,
             customer_name: name,
             email,
             phone,
@@ -544,6 +542,14 @@ export default function TourDetail() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t('tourDetail.bookingForm.departureDate')}</label>
+                      {(tour.departure_dates || []).length === 1 ? (
+                        <>
+                          <input type="hidden" {...register('departure_date', { required: true })} value={tour.departure_dates[0]} />
+                          <div className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 font-medium">
+                            {formatDate(tour.departure_dates[0])}
+                          </div>
+                        </>
+                      ) : (
                       <select
                         {...register('departure_date', { required: true })}
                         className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 ${errors.departure_date ? 'border-red-400' : 'border-gray-200'}`}
@@ -553,6 +559,7 @@ export default function TourDetail() {
                           <option key={d} value={d}>{formatDate(d)}</option>
                         ))}
                       </select>
+                      )}
                     </div>
                   </div>
 
