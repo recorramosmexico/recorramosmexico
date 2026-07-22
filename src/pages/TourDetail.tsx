@@ -35,7 +35,7 @@ export default function TourDetail() {
   const [profilePrefilled, setProfilePrefilled] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'oxxo' | 'bank_transfer'>('card');
 
-  const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm<BookingFormData>({
+  const { register, handleSubmit, watch, formState: { errors }, reset } = useForm<BookingFormData>({
     defaultValues: { travelers: 1 },
   });
 
@@ -108,6 +108,10 @@ export default function TourDetail() {
   }, [user, reset]);
 
   const onSubmit = async (data: BookingFormData) => {
+    // If only one departure date exists, use it directly regardless of form value
+    if (tour?.departure_dates?.length === 1) {
+      data.departure_date = tour.departure_dates[0];
+    }
     if (!tour) return;
 
     if (!user) {
@@ -543,12 +547,9 @@ export default function TourDetail() {
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t('tourDetail.bookingForm.departureDate')}</label>
                       {(tour.departure_dates || []).length === 1 ? (
-                        <>
-                          <input type="hidden" {...register('departure_date', { required: true })} value={tour.departure_dates[0]} />
-                          <div className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 font-medium">
-                            {formatDate(tour.departure_dates[0])}
-                          </div>
-                        </>
+                        <div className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 font-medium">
+                          {formatDate(tour.departure_dates[0])}
+                        </div>
                       ) : (
                       <select
                         {...register('departure_date', { required: true })}
