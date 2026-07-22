@@ -42,6 +42,26 @@ export default function TourDetail() {
   const travelers = watch('travelers') || 1;
   const selectedDate = watch('departure_date');
 
+  const _seoTitle = tour ? `${lang === 'en' ? tour.title_en : tour.title_es} desde ${tour.price_mxn.toLocaleString('es-MX')} MXN` : '';
+  const _seoDesc = tour ? (lang === 'en' ? tour.description_en : tour.description_es).slice(0, 155) : '';
+  const _seoJsonLd = tour ? [
+    tourSchema(tour, lang),
+    breadcrumbSchema([
+      { name: 'Inicio', path: '/' },
+      { name: 'Tours', path: '/tours' },
+      { name: lang === 'en' ? tour.title_en : tour.title_es, path: `/tours/${tour.slug}` },
+    ]),
+  ] : [];
+
+  useSEO({
+    title: _seoTitle,
+    description: _seoDesc,
+    path: tour ? `/tours/${tour.slug}` : '',
+    image: tour?.image_urls?.[0] || '/Logo_Bandera.jpg',
+    type: 'product',
+    jsonLd: _seoJsonLd,
+  });
+
   useEffect(() => {
     if (!slug) return;
     const load = async () => {
@@ -258,26 +278,6 @@ export default function TourDetail() {
   const itinerary = lang === 'en' ? tour.itinerary_en : tour.itinerary_es;
   const includes = lang === 'en' ? tour.includes_en : tour.includes_es;
   const excludes = lang === 'en' ? tour.excludes_en : tour.excludes_es;
-
-  const seoTitle = `${title} desde ${tour.price_mxn.toLocaleString('es-MX')} MXN`;
-  const seoDescription = description.slice(0, 155);
-  const seoJsonLd = [
-    tourSchema(tour, lang),
-    breadcrumbSchema([
-      { name: 'Inicio', path: '/' },
-      { name: 'Tours', path: '/tours' },
-      { name: title, path: `/tours/${tour.slug}` },
-    ]),
-  ];
-
-  useSEO({
-    title: seoTitle,
-    description: seoDescription,
-    path: `/tours/${tour.slug}`,
-    image: tour.image_urls?.[0] || '/Logo_Bandera.jpg',
-    type: 'product',
-    jsonLd: seoJsonLd,
-  });
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
