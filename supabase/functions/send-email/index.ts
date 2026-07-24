@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_bank_transfer" | "reservation_confirmed" | "inquiry" | "inquiry_reply";
+  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_admin_proof" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_bank_transfer" | "reservation_confirmed" | "inquiry" | "inquiry_reply";
   to: string;
   data: Record<string, string | number>;
 }
@@ -290,6 +290,49 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
       };
     }
 
+    case "reservation_admin_proof": {
+      const subject = `Comprobante de pago subido — ${data.tour_title}`;
+      const total = Number(data.total).toLocaleString("es-MX");
+      const depositAmount = data.deposit_amount ? Number(data.deposit_amount).toLocaleString("es-MX") : null;
+      const depositPct = data.deposit_percentage ? String(data.deposit_percentage) : null;
+      const proofUrl = data.payment_proof_url ? String(data.payment_proof_url) : null;
+      const confirmUrl = data.confirm_url ? String(data.confirm_url) : null;
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">Un viajero ha subido su comprobante de pago por transferencia bancaria. Revisa el comprobante y confirma la reserva con un clic:</p>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <p style="margin:0 0 8px;font-size:16px;font-weight:800;color:#111827;">${data.tour_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Cliente:</strong> ${data.customer_name}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Email:</strong> ${data.email}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Teléfono:</strong> ${data.phone}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Fecha de salida:</strong> ${data.departure_date}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Viajeros:</strong> ${data.travelers}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total:</strong> ${total} MXN</p>
+          ${depositAmount ? `<p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#E8670A;"><strong style="color:#374151;">Anticipo (${depositPct}%):</strong> ${depositAmount} MXN</p>` : ""}
+        </div>
+        ${proofUrl ? `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+          <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#c2410c;text-transform:uppercase;letter-spacing:1px;">Comprobante de pago</p>
+          <a href="${proofUrl}" style="display:inline-block;padding:10px 24px;background:#1A1A1A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:14px;">Ver comprobante (imagen o PDF)</a>
+        </div>` : ""}
+        ${confirmUrl ? `<a href="${confirmUrl}" style="display:inline-block;padding:16px 36px;background:#10b981;color:#fff;font-weight:800;text-decoration:none;border-radius:8px;font-size:16px;">Confirmar Reserva</a>
+        <p style="color:#9ca3af;font-size:12px;margin:12px 0 0;">Al hacer clic, la reserva se confirmara automaticamente y el viajero recibira su correo de confirmacion.</p>` : ""}`;
+      return {
+        subject,
+        html_body: buildHtml("Comprobante de Pago — Confirmacion Requerida", body, logoUrl),
+        text_body: buildText(subject, `Un viajero ha subido su comprobante de pago por transferencia.
+
+Tour: ${data.tour_title}
+Cliente: ${data.customer_name}
+Email: ${data.email}
+Teléfono: ${data.phone}
+Fecha: ${data.departure_date}
+Viajeros: ${data.travelers}
+Total: ${total} MXN${depositAmount ? `
+Anticipo (${depositPct}%): ${depositAmount} MXN` : ""}
+
+Ver comprobante: ${proofUrl}
+Confirmar reserva: ${confirmUrl}`),
+      };
+    }
+
     case "reservation_bank_transfer": {
       const subject = `Reserva por Transferencia — ${data.tour_title}`;
       const total = Number(data.total).toLocaleString("es-MX");
@@ -320,10 +363,9 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
         </div>
         <div style="background:#fff7ed;border-left:4px solid #E8670A;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;">
           <p style="margin:0 0 4px;color:#c2410c;font-size:14px;font-weight:700;">Importante: tienes maximo 72 horas para realizar la transferencia.</p>
-          <p style="margin:0;color:#c2410c;font-size:13px;line-height:1.6;">Una vez realizada la transferencia, envianos el comprobante por WhatsApp al 562 387 2050 o subelo desde tu cuenta.</p>
+          <p style="margin:0;color:#c2410c;font-size:13px;line-height:1.6;">Una vez realizada la transferencia, sube tu comprobante de pago desde la seccion "Mis Reservas" en tu cuenta para que confirmemos tu reserva.</p>
         </div>
-        ${proofUrl ? `<p style="color:#374151;font-size:14px;margin:0 0 20px;">El viajero ya subio su comprobante de pago: <a href="${proofUrl}" style="color:#E8670A;">Ver comprobante</a></p>` : ""}
-        <a href="https://recorramosmexico.com.mx/mi-cuenta" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Ver Estado de mi Reserva</a>
+        <a href="https://recorramosmexico.com.mx/mi-cuenta" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Ir a Mis Reservas</a>
         <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">¿Preguntas? Escribenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
       return {
         subject,

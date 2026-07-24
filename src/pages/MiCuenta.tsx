@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   CalendarDays, MapPin, Users, CreditCard, LogOut, Clock, User, Phone,
   Mail, Save, CheckCircle, CreditCard as Edit2, AlertTriangle, Banknote,
-  Building2, Wallet, ArrowRight, Calendar, RefreshCw,
+  Building2, Wallet, ArrowRight, Calendar, RefreshCw, Upload, FileCheck, Loader2, ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -15,6 +15,9 @@ const EXPIRY_HOURS = 72;
 interface Reservation {
   id: string;
   created_at: string;
+  customer_name: string;
+  email: string;
+  phone: string;
   departure_date: string;
   travelers: number;
   total_price_mxn: number;
@@ -25,6 +28,8 @@ interface Reservation {
   remaining_balance_mxn: number | null;
   balance_payment_requested_at: string | null;
   notes: string;
+  confirmation_token: string | null;
+  payment_proof_url: string | null;
   tours: { title_es: string; title_en: string; destination: string; image_urls: string[] } | null;
 }
 
@@ -83,6 +88,8 @@ export default function MiCuenta() {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('card');
   const [checkoutLoadingId, setCheckoutLoadingId] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [proofUploadingId, setProofUploadingId] = useState<string | null>(null);
+  const [proofError, setProofError] = useState<string | null>(null);
 
   const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
     pending:      { label: lang === 'en' ? 'Pending'        : 'Pendiente',       color: 'bg-yellow-100 text-yellow-800' },
@@ -228,6 +235,59 @@ export default function MiCuenta() {
       const msg = err instanceof Error ? err.message : String(err);
       setCheckoutError(msg);
       setCheckoutLoadingId(null);
+    }
+  };
+
+  const handleUploadProof = async (res: Reservation, file: File) => {
+    setProofError(null);
+    setProofUploadingId(res.id);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${res.id}-${Date.now()}.${fileExt}`;
+      const { error: uploadErr } = await supabase.storage
+        .from('payment-proofs')
+        .upload(fileName, file);
+      if (uploadErr) throw new Error(lang === 'en' ? 'Error uploading proof.' : 'Error al subir comprobante.');
+      const { data: urlData } = supabase.storage.from('payment-proofs').getPublicUrl(fileName);
+      const proofUrl = urlData.publicUrl;
+      const { error: updateErr } = await supabase
+        .from('reservations')
+        .update({ payment_proof_url: proofUrl })
+        .eq('id', res.id);
+      if (updateErr) throw new Error(lang === 'en' ? 'Error saving proof URL.' : 'Error al guardar el comprobante.');
+      const tourTitle = res.tours
+        ? (lang === 'en' ? res.tours.title_en : res.tours.title_es) || res.tours.title_es
+        : 'Tour';
+      const confirmUrl = res.confirmation_token
+        ? `${window.location.origin}/confirmar-pago?token=${res.confirmation_token}`
+        : null;
+      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'reservation_admin_proof',
+          to: 'contacto@recorramosmexico.com.mx',
+          data: {
+            tour_title: tourTitle,
+            customer_name: res.customer_name || '',
+            email: res.email || user?.email || '',
+            phone: res.phone || '',
+            departure_date: res.departure_date,
+            travelers: String(res.travelers),
+            total: String(res.total_price_mxn),
+            deposit_amount: String(res.deposit_amount_mxn ?? 0),
+            deposit_percentage: String(res.deposit_percentage_applied ?? 40),
+            payment_proof_url: proofUrl,
+            confirm_url: confirmUrl || '',
+          },
+        }),
+      });
+      await fetchReservations(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setProofError(msg);
+    } finally {
+      setProofUploadingId(null);
     }
   };
 
@@ -516,6 +576,67 @@ export default function MiCuenta() {
                                   error={checkoutError}
                                   label={lang === 'en' ? 'Pay Balance Now' : 'Pagar Saldo Ahora'}
                                 />
+                              )}
+                            </div>
+                          )}
+
+                          {/* ── Bank transfer: upload payment proof ── */}
+                          {res.payment_method_type === 'bank_transfer' && res.payment_status === 'pending' && !isClientExpired && (
+                            <div className="mt-4">
+                              {res.payment_proof_url ? (
+                                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-3">
+                                  <FileCheck size={16} className="text-green-600 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="text-xs font-bold text-green-800">
+                                      {lang === 'en' ? 'Proof uploaded — pending confirmation' : 'Comprobante enviado — pendiente de confirmacion'}
+                                    </p>
+                                    <a href={res.payment_proof_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-green-700 underline mt-1">
+                                      <ExternalLink size={12} />
+                                      {lang === 'en' ? 'View proof' : 'Ver comprobante'}
+                                    </a>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-3">
+                                    <Upload size={15} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                      <p className="text-xs font-bold text-amber-800">
+                                        {lang === 'en' ? 'Upload your payment proof' : 'Sube tu comprobante de pago'}
+                                      </p>
+                                      <p className="text-xs text-amber-700 mt-0.5">
+                                        {lang === 'en'
+                                          ? 'Upload a photo or PDF of your transfer receipt so we can confirm your reservation.'
+                                          : 'Sube una foto o PDF de tu comprobante de transferencia para que confirmemos tu reserva.'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <label className="cursor-pointer block">
+                                    <input
+                                      type="file"
+                                      accept="image/*,application/pdf"
+                                      onChange={(e) => {
+                                        const f = e.target.files?.[0];
+                                        if (f) handleUploadProof(res, f);
+                                      }}
+                                      className="hidden"
+                                    />
+                                    <div className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed transition-colors ${
+                                      proofUploadingId === res.id
+                                        ? 'border-orange-300 bg-orange-50 cursor-wait'
+                                        : 'border-gray-200 hover:border-[#E8670A] hover:bg-orange-50'
+                                    }`}>
+                                      {proofUploadingId === res.id ? (
+                                        <><Loader2 size={18} className="animate-spin text-[#E8670A]" /><span className="text-sm font-semibold text-[#E8670A]">{lang === 'en' ? 'Uploading...' : 'Subiendo...'}</span></>
+                                      ) : (
+                                        <><Upload size={18} className="text-gray-400" /><span className="text-sm text-gray-600">{lang === 'en' ? 'Choose file (image or PDF)' : 'Elegir archivo (imagen o PDF)'}</span></>
+                                      )}
+                                    </div>
+                                  </label>
+                                  {proofError && proofUploadingId === null && (
+                                    <p className="text-xs text-red-600 mt-2">{proofError}</p>
+                                  )}
+                                </div>
                               )}
                             </div>
                           )}

@@ -6,7 +6,7 @@ import {
   MapPin, Clock, Users, Calendar, Check, X as XIcon,
   ChevronDown, ChevronUp, Phone, Mail, User, MessageSquare,
   ArrowLeft, Share2, LogIn, CheckCircle, CreditCard, Banknote, Building2,
-  Upload, FileCheck, Loader2
+  Upload,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -35,8 +35,6 @@ export default function TourDetail() {
   const [checkoutError, setCheckoutError] = useState('');
   const [profilePrefilled, setProfilePrefilled] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'oxxo' | 'bank_transfer'>('card');
-  const [proofFile, setProofFile] = useState<File | null>(null);
-  const [uploadingProof, setUploadingProof] = useState(false);
   const [transferReservation, setTransferReservation] = useState<{ id: string; reservationNumber: string | null } | null>(null);
 
   const { register, handleSubmit, watch, formState: { errors }, reset } = useForm<BookingFormData>({
@@ -111,7 +109,7 @@ export default function TourDetail() {
       });
   }, [user, reset]);
 
-  const onSubmit = async (data: BookingFormData) => {
+  const onSubmit = async (data: BookingFormData, method?: 'card' | 'oxxo' | 'bank_transfer') => {
     // If only one departure date exists, use it directly regardless of form value
     if (tour?.departure_dates?.length === 1) {
       data.departure_date = tour.departure_dates[0];
@@ -122,6 +120,8 @@ export default function TourDetail() {
       navigate(`/login?redirect=/tours/${slug}`);
       return;
     }
+
+    const effectiveMethod = method ?? paymentMethod;
 
     setSubmitting(true);
     setCheckoutError('');
@@ -147,6 +147,8 @@ export default function TourDetail() {
         deposit_amount_mxn: depositAmount,
         remaining_balance_mxn: remainingBalance,
         payment_status: 'pending',
+        payment_method_type: effectiveMethod,
+        confirmation_token: effectiveMethod === 'bank_transfer' ? crypto.randomUUID() : null,
         notes: data.notes || '',
       })
       .select('id')
@@ -170,11 +172,11 @@ export default function TourDetail() {
       remaining_balance: String(remainingBalance),
       deposit_percentage: String(depositPct),
       notes: data.notes || '',
-      payment_method: paymentMethod,
+      payment_method: effectiveMethod,
     };
 
     // Bank transfer: skip Stripe entirely, show transfer instructions screen
-    if (paymentMethod === 'bank_transfer') {
+    if (effectiveMethod === 'bank_transfer') {
       sendEmail('reservation_bank_transfer', data.email, emailData);
       sendEmail('reservation_admin', 'contacto@recorramosmexico.com.mx', emailData);
       setTransferReservation({ id: reservation.id, reservationNumber: null });
@@ -185,7 +187,7 @@ export default function TourDetail() {
     // For async payment methods (OXXO), send a "pending" email explaining
     // the reservation is not confirmed until payment is received (max 72h).
     // For card payments, the webhook sends the confirmation email once payment is confirmed.
-    if (paymentMethod === 'oxxo') {
+    if (effectiveMethod === 'oxxo') {
       sendEmail('reservation_pending_payment', data.email, emailData);
     }
     sendEmail('reservation_admin', 'contacto@recorramosmexico.com.mx', emailData);
@@ -229,31 +231,7 @@ export default function TourDetail() {
     window.location.href = result.url;
   };
 
-  const handleUploadProof = async () => {
-    if (!proofFile || !transferReservation) return;
-    setUploadingProof(true);
-    const fileExt = proofFile.name.split('.').pop();
-    const fileName = `${transferReservation.id}-${Date.now()}.${fileExt}`;
-    const { error } = await supabase.storage
-      .from('payment-proofs')
-      .upload(fileName, proofFile);
-    if (error) {
-      setCheckoutError(lang === 'en' ? 'Error uploading proof. Please try again.' : 'Error al subir el comprobante. Intenta de nuevo.');
-      setUploadingProof(false);
-      return;
-    }
-    const { data: urlData } = supabase.storage.from('payment-proofs').getPublicUrl(fileName);
-    const proofUrl = urlData.publicUrl;
-    await supabase.from('reservations').update({ payment_proof_url: proofUrl }).eq('id', transferReservation.id);
-    sendEmail('reservation_admin', 'contacto@recorramosmexico.com.mx', {
-      customer_name: watch('customer_name') || '',
-      tour_title: tour ? (lang === 'en' ? tour.title_en : tour.title_es) : '',
-      payment_method: 'bank_transfer',
-      payment_proof_url: proofUrl,
-    });
-    setUploadingProof(false);
-    setSubmitted(true);
-  };
+
 
   const handleWhatsAppBook = () => {
     if (!tour) return;
@@ -521,7 +499,7 @@ export default function TourDetail() {
                     </button>
                   </div>
                 ) : (
-                <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit((data) => onSubmit(data))} className="p-6 space-y-4">
                   <h3 className="font-bold text-gray-900 text-lg">{t('tourDetail.bookingForm.title')}</h3>
 
                   {profilePrefilled && (
@@ -739,18 +717,12 @@ export default function TourDetail() {
                     )}
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod('bank_transfer')}
-                      className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      onClick={() => handleSubmit((data) => onSubmit(data, 'bank_transfer'))()}
+                      disabled={submitting}
+                      className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50"
                     >
-                      {lang === 'en' ? 'Reserve with Bank Transfer' : 'Reservar con Transferencia'}
+                      {submitting ? t('common.loading') : (lang === 'en' ? 'Reserve with Bank Transfer' : 'Reservar con Transferencia')}
                     </button>
-                    {paymentMethod === 'bank_transfer' && (
-                      <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mt-2">
-                        {lang === 'en'
-                          ? 'Click "Proceed to Payment" to confirm your reservation. You will have 72 hours to complete the transfer.'
-                          : 'Presiona "Proceder al Pago" para confirmar tu reserva. Tienes 72 horas para realizar la transferencia.'}
-                      </p>
-                    )}
                   </div>
 
                   <button
@@ -823,42 +795,18 @@ export default function TourDetail() {
                     </p>
                     <p className="text-xs text-amber-700">
                       {lang === 'en'
-                        ? 'Upload your payment proof below and send it via WhatsApp to speed up confirmation.'
-                        : 'Sube tu comprobante de pago abajo y envialo por WhatsApp para acelerar la confirmacion.'}
+                        ? 'Once you make the transfer, upload your payment proof from "My Reservations" in your account so we can confirm your reservation.'
+                        : 'Una vez que hagas la transferencia, sube tu comprobante de pago desde "Mis Reservas" en tu cuenta para que confirmemos tu reserva.'}
                     </p>
                   </div>
 
-                  {/* Proof upload */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-2">
-                      {lang === 'en' ? 'Upload payment proof' : 'Subir comprobante de pago'}
-                    </label>
-                    <label className="flex-1 cursor-pointer block">
-                      <input
-                        type="file"
-                        accept="image/*,application/pdf"
-                        onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
-                        className="hidden"
-                      />
-                      <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed transition-colors ${
-                        proofFile ? 'border-green-300 bg-green-50' : 'border-gray-200 hover:border-[#E8670A] hover:bg-orange-50'
-                      }`}>
-                        {proofFile ? (
-                          <><FileCheck size={18} className="text-green-600" /><span className="text-sm font-semibold text-green-700">{proofFile.name}</span></>
-                        ) : (
-                          <><Upload size={18} className="text-gray-400" /><span className="text-sm text-gray-500">{lang === 'en' ? 'Choose file (image or PDF)' : 'Elegir archivo (imagen o PDF)'}</span></>
-                        )}
-                      </div>
-                    </label>
-                  </div>
-
-                  <button
-                    onClick={handleUploadProof}
-                    disabled={!proofFile || uploadingProof}
-                    className="w-full py-3.5 bg-[#E8670A] text-white font-bold rounded-xl hover:bg-[#B8520A] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  <Link
+                    to="/mi-cuenta"
+                    className="w-full py-3.5 bg-[#E8670A] text-white font-bold rounded-xl hover:bg-[#B8520A] transition-colors flex items-center justify-center gap-2"
                   >
-                    {uploadingProof ? <><Loader2 size={18} className="animate-spin" /> {t('common.loading')}</> : <><Upload size={18} /> {lang === 'en' ? 'Upload Proof & Confirm' : 'Subir Comprobante y Confirmar'}</>}
-                  </button>
+                    <Upload size={18} />
+                    {lang === 'en' ? 'Go to My Reservations' : 'Ir a Mis Reservas'}
+                  </Link>
 
                   <a
                     href={`https://wa.me/525623872050?text=${encodeURIComponent(`Hola, acabo de hacer una reserva para el tour "${tour ? (lang === 'en' ? tour.title_en : tour.title_es) : ''}". Adjunto mi comprobante de transferencia.`)}`}
