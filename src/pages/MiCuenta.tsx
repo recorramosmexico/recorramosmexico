@@ -242,11 +242,16 @@ export default function MiCuenta() {
     setProofError(null);
     setProofUploadingId(res.id);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(lang === 'en' ? 'Session expired. Please sign in again.' : 'Sesion expirada. Inicia sesion de nuevo.');
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${res.id}-${Date.now()}.${fileExt}`;
       const { error: uploadErr } = await supabase.storage
         .from('payment-proofs')
-        .upload(fileName, file);
+        .upload(fileName, file, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
       if (uploadErr) throw new Error(lang === 'en' ? 'Error uploading proof.' : 'Error al subir comprobante.');
       const { data: urlData } = supabase.storage.from('payment-proofs').getPublicUrl(fileName);
       const proofUrl = urlData.publicUrl;
@@ -263,7 +268,10 @@ export default function MiCuenta() {
         : null;
       await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           type: 'reservation_admin_proof',
           to: 'contacto@recorramosmexico.com.mx',
