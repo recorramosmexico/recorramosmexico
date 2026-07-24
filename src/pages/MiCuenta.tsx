@@ -249,16 +249,17 @@ export default function MiCuenta() {
       const { error: uploadErr } = await supabase.storage
         .from('payment-proofs')
         .upload(fileName, file, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
+          cacheControl: '3600',
+          upsert: false,
         });
-      if (uploadErr) throw new Error(lang === 'en' ? 'Error uploading proof.' : 'Error al subir comprobante.');
+      if (uploadErr) throw new Error(uploadErr.message);
       const { data: urlData } = supabase.storage.from('payment-proofs').getPublicUrl(fileName);
       const proofUrl = urlData.publicUrl;
       const { error: updateErr } = await supabase
         .from('reservations')
         .update({ payment_proof_url: proofUrl })
         .eq('id', res.id);
-      if (updateErr) throw new Error(lang === 'en' ? 'Error saving proof URL.' : 'Error al guardar el comprobante.');
+      if (updateErr) throw new Error(updateErr.message);
       const tourTitle = res.tours
         ? (lang === 'en' ? res.tours.title_en : res.tours.title_es) || res.tours.title_es
         : 'Tour';
