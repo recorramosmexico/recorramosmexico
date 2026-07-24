@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, Filter, Trash2, AlertTriangle, Send, Users, CheckCircle, RefreshCw, Ticket } from 'lucide-react';
+import { Download, Filter, Trash2, AlertTriangle, Send, Users, CheckCircle, RefreshCw, Ticket, FileText, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { sendEmail } from '../../lib/email';
 import type { Reservation, Tour } from '../../types';
@@ -47,6 +47,9 @@ export default function AdminReservaciones() {
   // Sync payment state
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncResults, setSyncResults] = useState<Record<string, { ok: boolean; msg: string }>>({});
+
+  // Proof viewer state
+  const [proofUrl, setProofUrl] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -512,6 +515,15 @@ export default function AdminReservaciones() {
                             >
                               <Trash2 size={14} />
                             </button>
+                            {res.payment_proof_url && (
+                              <button
+                                onClick={() => setProofUrl(res.payment_proof_url)}
+                                className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Ver comprobante de pago"
+                              >
+                                <FileText size={14} />
+                              </button>
+                            )}
                           </div>
 
                           {syncResults[res.id]?.msg && (
@@ -594,6 +606,38 @@ export default function AdminReservaciones() {
                 {deleting ? 'Eliminando...' : `Eliminar ${pastIds.length}`}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment proof viewer modal */}
+      {proofUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={() => setProofUrl(null)}>
+          <div className="bg-white rounded-2xl shadow-xl p-4 max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-gray-900">Comprobante de Pago</h3>
+              <button
+                onClick={() => setProofUrl(null)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto rounded-xl bg-gray-50 flex items-center justify-center min-h-[300px]">
+              {proofUrl.match(/\.(pdf)$/i) ? (
+                <iframe src={proofUrl} className="w-full h-[70vh] rounded-xl" title="Comprobante" />
+              ) : (
+                <img src={proofUrl} alt="Comprobante de pago" className="max-w-full max-h-[70vh] object-contain rounded-xl" />
+              )}
+            </div>
+            <a
+              href={proofUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 flex items-center justify-center gap-2 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors text-sm"
+            >
+              <Download size={15} /> Abrir en nueva pestaña
+            </a>
           </div>
         </div>
       )}

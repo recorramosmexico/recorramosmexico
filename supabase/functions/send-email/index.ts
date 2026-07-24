@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_confirmed" | "inquiry" | "inquiry_reply";
+  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_bank_transfer" | "reservation_confirmed" | "inquiry" | "inquiry_reply";
   to: string;
   data: Record<string, string | number>;
 }
@@ -233,6 +233,8 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Viajeros:</strong> ${data.travelers}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total:</strong> $${total} MXN</p>
           ${data.notes ? `<p style="margin:8px 0 0;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Notas:</strong> ${data.notes}</p>` : ""}
+          ${data.payment_method ? `<p style="margin:4px 0 0;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Metodo de pago:</strong> ${data.payment_method === "bank_transfer" ? "Transferencia Bancaria" : data.payment_method === "oxxo" ? "OXXO" : "Tarjeta"}</p>` : ""}
+          ${data.payment_proof_url ? `<p style="margin:8px 0 0;font-size:14px;font-weight:700;color:#E8670A;"><strong style="color:#374151;">Comprobante de pago:</strong> <a href="${data.payment_proof_url}" style="color:#E8670A;">Ver comprobante</a></p>` : ""}
         </div>`;
       return {
         subject,
@@ -285,6 +287,51 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
         subject,
         html_body: buildHtml("Respuesta a tu Solicitud", body, logoUrl),
         text_body: buildText(subject, `Hola ${data.nombre},\n\nHemos recibido tu solicitud y esta es nuestra respuesta:\n\n${data.reply}${data.mensaje_original ? `\n\n---\nTu solicitud original:\n${data.mensaje_original}` : ""}\n\nSi tienes mas preguntas escribenos a contacto@recorramosmexico.com.mx`),
+      };
+    }
+
+    case "reservation_bank_transfer": {
+      const subject = `Reserva por Transferencia — ${data.tour_title}`;
+      const total = Number(data.total).toLocaleString("es-MX");
+      const depositAmount = data.deposit_amount ? Number(data.deposit_amount).toLocaleString("es-MX") : null;
+      const depositPct = data.deposit_percentage ? String(data.deposit_percentage) : null;
+      const remainingBalance = data.remaining_balance ? Number(data.remaining_balance).toLocaleString("es-MX") : null;
+      const proofUrl = data.payment_proof_url ? String(data.payment_proof_url) : null;
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Hola <strong>${data.customer_name}</strong>,
+        </p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Hemos recibido tu solicitud de reserva para <strong>${data.tour_title}</strong>. Para confirmar tu lugar, realiza la transferencia del anticipo a la siguiente cuenta bancaria:
+        </p>
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:20px;margin:0 0 20px;">
+          <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:1px;">Datos Bancarios</p>
+          <p style="margin:0 0 4px;font-size:14px;color:#374151;"><strong>Banco:</strong> Bancomer (BBVA)</p>
+          <p style="margin:0 0 4px;font-size:14px;color:#374151;"><strong>Tarjeta:</strong> 4152 3141 0698 0256</p>
+          <p style="margin:0 0 4px;font-size:14px;color:#374151;"><strong>CLABE:</strong> 012180004833647476</p>
+          <p style="margin:0 0 4px;font-size:14px;color:#374151;"><strong>Titular:</strong> Trinidad Gil Martinez</p>
+        </div>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <p style="margin:0 0 10px;font-size:16px;font-weight:800;color:#111827;">${data.tour_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Fecha de salida:</strong> ${data.departure_date}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Viajeros:</strong> ${data.travelers}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total del tour:</strong> ${total} MXN</p>
+          ${depositAmount ? `<p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#E8670A;"><strong style="color:#374151;">Anticipo a transferir (${depositPct}%):</strong> ${depositAmount} MXN</p>` : ""}
+          ${remainingBalance ? `<p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Saldo a pagar en efectivo al abordar:</strong> ${remainingBalance} MXN</p>` : ""}
+        </div>
+        <div style="background:#fff7ed;border-left:4px solid #E8670A;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;">
+          <p style="margin:0 0 4px;color:#c2410c;font-size:14px;font-weight:700;">Importante: tienes maximo 72 horas para realizar la transferencia.</p>
+          <p style="margin:0;color:#c2410c;font-size:13px;line-height:1.6;">Una vez realizada la transferencia, envianos el comprobante por WhatsApp al 562 387 2050 o subelo desde tu cuenta.</p>
+        </div>
+        ${proofUrl ? `<p style="color:#374151;font-size:14px;margin:0 0 20px;">El viajero ya subio su comprobante de pago: <a href="${proofUrl}" style="color:#E8670A;">Ver comprobante</a></p>` : ""}
+        <a href="https://recorramosmexico.com.mx/mi-cuenta" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Ver Estado de mi Reserva</a>
+        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">¿Preguntas? Escribenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+      return {
+        subject,
+        html_body: buildHtml("Reserva por Transferencia Bancaria", body, logoUrl),
+        text_body: buildText(
+          subject,
+          `Hola ${data.customer_name},\n\nHemos recibido tu solicitud de reserva para ${data.tour_title}.\n\nDATOS BANCARIOS:\nBanco: Bancomer (BBVA)\nTarjeta: 4152 3141 0698 0256\nCLABE: 012180004833647476\nTitular: Trinidad Gil Martinez\n\nAnticipo a transferir (${depositPct}%): ${depositAmount} MXN\nTotal: ${total} MXN\n\nIMPORTANTE: Tienes maximo 72 horas para realizar la transferencia. Envianos el comprobante por WhatsApp al 562 387 2050 o subelo desde tu cuenta.\n\nVer estado: https://recorramosmexico.com.mx/mi-cuenta`,
+        ),
       };
     }
 

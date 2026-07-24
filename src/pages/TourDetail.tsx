@@ -5,7 +5,8 @@ import { useForm } from 'react-hook-form';
 import {
   MapPin, Clock, Users, Calendar, Check, X as XIcon,
   ChevronDown, ChevronUp, Phone, Mail, User, MessageSquare,
-  ArrowLeft, Share2, LogIn, CheckCircle, CreditCard, Banknote, Building2
+  ArrowLeft, Share2, LogIn, CheckCircle, CreditCard, Banknote, Building2,
+  Upload, FileCheck, Loader2
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -34,6 +35,9 @@ export default function TourDetail() {
   const [checkoutError, setCheckoutError] = useState('');
   const [profilePrefilled, setProfilePrefilled] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'oxxo' | 'bank_transfer'>('card');
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
+  const [transferReservation, setTransferReservation] = useState<{ id: string; reservationNumber: string | null } | null>(null);
 
   const { register, handleSubmit, watch, formState: { errors }, reset } = useForm<BookingFormData>({
     defaultValues: { travelers: 1 },
@@ -169,11 +173,19 @@ export default function TourDetail() {
       payment_method: paymentMethod,
     };
 
-    // For async payment methods (OXXO/SPEI), send a "pending" email explaining
+    // Bank transfer: skip Stripe entirely, show transfer instructions screen
+    if (paymentMethod === 'bank_transfer') {
+      sendEmail('reservation_bank_transfer', data.email, emailData);
+      sendEmail('reservation_admin', 'contacto@recorramosmexico.com.mx', emailData);
+      setTransferReservation({ id: reservation.id, reservationNumber: null });
+      setSubmitting(false);
+      return;
+    }
+
+    // For async payment methods (OXXO), send a "pending" email explaining
     // the reservation is not confirmed until payment is received (max 72h).
     // For card payments, the webhook sends the confirmation email once payment is confirmed.
-    const isAsyncPayment = paymentMethod === 'oxxo' || paymentMethod === 'bank_transfer';
-    if (isAsyncPayment) {
+    if (paymentMethod === 'oxxo') {
       sendEmail('reservation_pending_payment', data.email, emailData);
     }
     sendEmail('reservation_admin', 'contacto@recorramosmexico.com.mx', emailData);
@@ -215,6 +227,32 @@ export default function TourDetail() {
     }
 
     window.location.href = result.url;
+  };
+
+  const handleUploadProof = async () => {
+    if (!proofFile || !transferReservation) return;
+    setUploadingProof(true);
+    const fileExt = proofFile.name.split('.').pop();
+    const fileName = `${transferReservation.id}-${Date.now()}.${fileExt}`;
+    const { error } = await supabase.storage
+      .from('payment-proofs')
+      .upload(fileName, proofFile);
+    if (error) {
+      setCheckoutError(lang === 'en' ? 'Error uploading proof. Please try again.' : 'Error al subir el comprobante. Intenta de nuevo.');
+      setUploadingProof(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from('payment-proofs').getPublicUrl(fileName);
+    const proofUrl = urlData.publicUrl;
+    await supabase.from('reservations').update({ payment_proof_url: proofUrl }).eq('id', transferReservation.id);
+    sendEmail('reservation_admin', 'contacto@recorramosmexico.com.mx', {
+      customer_name: watch('customer_name') || '',
+      tour_title: tour ? (lang === 'en' ? tour.title_en : tour.title_es) : '',
+      payment_method: 'bank_transfer',
+      payment_proof_url: proofUrl,
+    });
+    setUploadingProof(false);
+    setSubmitted(true);
   };
 
   const handleWhatsAppBook = () => {
@@ -608,11 +646,10 @@ export default function TourDetail() {
                     <label className="block text-xs font-semibold text-gray-500 mb-2">
                       {lang === 'en' ? 'Payment method' : 'Método de pago'}
                     </label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {([
                         { id: 'card', label: lang === 'en' ? 'Card' : 'Tarjeta', Icon: CreditCard },
                         { id: 'oxxo', label: 'OXXO', Icon: Banknote },
-                        { id: 'bank_transfer', label: lang === 'en' ? 'Transfer' : 'Transferencia', Icon: Building2 },
                       ] as const).map(({ id, label, Icon }) => (
                         <button
                           key={id}
@@ -636,13 +673,6 @@ export default function TourDetail() {
                           : 'Recibirás un voucher para pagar en cualquier tienda OXXO en 3 días.'}
                       </p>
                     )}
-                    {paymentMethod === 'bank_transfer' && (
-                      <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mt-2">
-                        {lang === 'en'
-                          ? 'You will receive SPEI transfer instructions. Payment must be completed within 3 days.'
-                          : 'Recibirás instrucciones para transferencia SPEI. Tienes 3 días para completar el pago.'}
-                      </p>
-                    )}
                   </div>
 
                   {checkoutError && (
@@ -659,6 +689,70 @@ export default function TourDetail() {
                     {submitting ? t('common.loading') : t('tourDetail.bookingForm.proceedPayment')}
                   </button>
 
+                  {/* Divider */}
+                  <div className="relative py-2">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-200" />
+                    </div>
+                    <div className="relative flex justify-center">
+                      <span className="bg-white px-4 text-xs text-gray-400 font-medium">
+                        {lang === 'en' ? 'or pay by' : 'o paga con'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bank transfer section */}
+                  <div className="border-2 border-blue-100 rounded-xl p-4 bg-blue-50/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Building2 size={18} className="text-blue-600" />
+                      <span className="text-sm font-bold text-gray-700">
+                        {lang === 'en' ? 'Bank Transfer (SPEI)' : 'Transferencia Bancaria (SPEI)'}
+                      </span>
+                    </div>
+                    <div className="space-y-1.5 text-xs text-gray-600 mb-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Banco</span>
+                        <span className="font-semibold">Bancomer (BBVA)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Tarjeta</span>
+                        <span className="font-mono font-semibold">4152 3141 0698 0256</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">CLABE</span>
+                        <span className="font-mono font-semibold">012180004833647476</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Titular</span>
+                        <span className="font-semibold">Trinidad Gil Martinez</span>
+                      </div>
+                    </div>
+                    {travelers > 0 && (
+                      <div className="bg-orange-50 rounded-lg px-3 py-2 mb-3 text-xs">
+                        <span className="font-semibold text-[#E8670A]">
+                          {lang === 'en' ? 'Deposit to transfer: ' : 'Anticipo a transferir: '}
+                        </span>
+                        <span className="font-black text-[#E8670A]">
+                          ${Math.ceil(tour.price_mxn * travelers * (tour.deposit_percentage ?? 40) / 100).toLocaleString('es-MX')} MXN
+                        </span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('bank_transfer')}
+                      className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                    >
+                      {lang === 'en' ? 'Reserve with Bank Transfer' : 'Reservar con Transferencia'}
+                    </button>
+                    {paymentMethod === 'bank_transfer' && (
+                      <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mt-2">
+                        {lang === 'en'
+                          ? 'Click "Proceed to Payment" to confirm your reservation. You will have 72 hours to complete the transfer.'
+                          : 'Presiona "Proceder al Pago" para confirmar tu reserva. Tienes 72 horas para realizar la transferencia.'}
+                      </p>
+                    )}
+                  </div>
+
                   <button
                     type="button"
                     onClick={handleWhatsAppBook}
@@ -670,9 +764,117 @@ export default function TourDetail() {
                     {t('tourDetail.bookingForm.whatsappBook')}
                   </button>
                 </form>
-                )}
-              </div>
+              )}
+
+              {/* Bank transfer confirmation screen */}
+              {transferReservation && (
+                <div className="space-y-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <CheckCircle size={24} className="text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-gray-900">
+                        {lang === 'en' ? 'Reservation Created!' : '¡Reserva Creada!'}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {lang === 'en' ? 'Complete your bank transfer to confirm your spot.' : 'Completa tu transferencia para confirmar tu lugar.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+                    <h4 className="text-sm font-bold text-blue-900 mb-3 flex items-center gap-2">
+                      <Building2 size={16} /> {lang === 'en' ? 'Bank Details' : 'Datos Bancarios'}
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Banco</span>
+                        <span className="font-bold text-gray-900">Bancomer (BBVA)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Tarjeta</span>
+                        <span className="font-mono font-bold text-gray-900">4152 3141 0698 0256</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">CLABE</span>
+                        <span className="font-mono font-bold text-gray-900">012180004833647476</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Titular</span>
+                        <span className="font-bold text-gray-900">Trinidad Gil Martinez</span>
+                      </div>
+                    </div>
+                    {travelers > 0 && (
+                      <div className="mt-3 pt-3 border-t border-blue-200">
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-[#E8670A]">{lang === 'en' ? 'Deposit to transfer' : 'Anticipo a transferir'}</span>
+                          <span className="font-black text-[#E8670A] text-lg">
+                            ${Math.ceil(tour.price_mxn * travelers * (tour.deposit_percentage ?? 40) / 100).toLocaleString('es-MX')} MXN
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <p className="text-sm text-amber-800 font-semibold mb-1">
+                      {lang === 'en' ? 'Important: You have 72 hours to complete the transfer.' : 'Importante: Tienes 72 horas para realizar la transferencia.'}
+                    </p>
+                    <p className="text-xs text-amber-700">
+                      {lang === 'en'
+                        ? 'Upload your payment proof below and send it via WhatsApp to speed up confirmation.'
+                        : 'Sube tu comprobante de pago abajo y envialo por WhatsApp para acelerar la confirmacion.'}
+                    </p>
+                  </div>
+
+                  {/* Proof upload */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-2">
+                      {lang === 'en' ? 'Upload payment proof' : 'Subir comprobante de pago'}
+                    </label>
+                    <label className="flex-1 cursor-pointer block">
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+                        className="hidden"
+                      />
+                      <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed transition-colors ${
+                        proofFile ? 'border-green-300 bg-green-50' : 'border-gray-200 hover:border-[#E8670A] hover:bg-orange-50'
+                      }`}>
+                        {proofFile ? (
+                          <><FileCheck size={18} className="text-green-600" /><span className="text-sm font-semibold text-green-700">{proofFile.name}</span></>
+                        ) : (
+                          <><Upload size={18} className="text-gray-400" /><span className="text-sm text-gray-500">{lang === 'en' ? 'Choose file (image or PDF)' : 'Elegir archivo (imagen o PDF)'}</span></>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+
+                  <button
+                    onClick={handleUploadProof}
+                    disabled={!proofFile || uploadingProof}
+                    className="w-full py-3.5 bg-[#E8670A] text-white font-bold rounded-xl hover:bg-[#B8520A] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {uploadingProof ? <><Loader2 size={18} className="animate-spin" /> {t('common.loading')}</> : <><Upload size={18} /> {lang === 'en' ? 'Upload Proof & Confirm' : 'Subir Comprobante y Confirmar'}</>}
+                  </button>
+
+                  <a
+                    href={`https://wa.me/525623872050?text=${encodeURIComponent(`Hola, acabo de hacer una reserva para el tour "${tour ? (lang === 'en' ? tour.title_en : tour.title_es) : ''}". Adjunto mi comprobante de transferencia.`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3.5 bg-[#25D366] text-white font-bold rounded-xl hover:bg-[#1EBE57] transition-colors flex items-center justify-center gap-2"
+                  >
+                    <svg viewBox="0 0 24 24" fill="white" className="w-5 h-5">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                    </svg>
+                    {lang === 'en' ? 'Send Proof via WhatsApp' : 'Enviar Comprobante por WhatsApp'}
+                  </a>
+                </div>
+              )}
             </div>
+          </div>
           </div>
         </div>
 
