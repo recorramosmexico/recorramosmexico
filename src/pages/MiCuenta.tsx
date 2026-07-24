@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   CalendarDays, MapPin, Users, CreditCard, LogOut, Clock, User, Phone,
   Mail, Save, CheckCircle, CreditCard as Edit2, AlertTriangle, Banknote,
-  Building2, Wallet, ArrowRight, Calendar, RefreshCw, Upload, FileCheck, Loader2, ExternalLink,
+  Wallet, ArrowRight, Calendar, RefreshCw, Upload, FileCheck, Loader2, ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -100,10 +100,9 @@ export default function MiCuenta() {
     expired:      { label: lang === 'en' ? 'Expired'        : 'Expirado',        color: 'bg-red-100 text-red-800' },
   };
 
-  const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: React.ReactNode }[] = [
-    { id: 'card',          label: lang === 'en' ? 'Credit / Debit Card' : 'Tarjeta de crédito / débito', icon: <CreditCard size={16} /> },
-    { id: 'oxxo',          label: 'OXXO',                                                                 icon: <Banknote size={16} /> },
-    { id: 'bank_transfer', label: lang === 'en' ? 'Bank Transfer (SPEI)' : 'Transferencia bancaria (SPEI)', icon: <Building2 size={16} /> },
+  const STRIPE_PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: React.ReactNode }[] = [
+    { id: 'card', label: lang === 'en' ? 'Credit / Debit Card' : 'Tarjeta de crédito / débito', icon: <CreditCard size={16} /> },
+    { id: 'oxxo', label: 'OXXO', icon: <Banknote size={16} /> },
   ];
 
   const fetchReservations = useCallback(async (silent = false) => {
@@ -528,7 +527,7 @@ export default function MiCuenta() {
                               ) : (
                                 <PaymentMethodSelector
                                   lang={lang}
-                                  methods={PAYMENT_METHODS}
+                                  methods={STRIPE_PAYMENT_METHODS}
                                   selected={selectedMethod}
                                   onSelect={setSelectedMethod}
                                   onPay={() => handleCompletePayment(res, 'pending')}
@@ -575,7 +574,7 @@ export default function MiCuenta() {
                               ) : (
                                 <PaymentMethodSelector
                                   lang={lang}
-                                  methods={PAYMENT_METHODS}
+                                  methods={STRIPE_PAYMENT_METHODS}
                                   selected={selectedMethod}
                                   onSelect={setSelectedMethod}
                                   onPay={() => handleCompletePayment(res, 'balance')}
