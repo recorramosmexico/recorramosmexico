@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
     // Look up the reservation by confirmation_token
     const { data: reservation, error: findErr } = await supabase
       .from("reservations")
-      .select("id, payment_status, payment_proof_url, email, customer_name, departure_date, travelers, total_price_mxn, deposit_amount_mxn, remaining_balance_mxn, deposit_percentage_applied, confirmation_token, tours(title_es, title_en)")
+      .select("id, payment_status, payment_proof_url, email, customer_name, phone, reservation_number, departure_date, travelers, total_price_mxn, deposit_amount_mxn, remaining_balance_mxn, deposit_percentage_applied, confirmation_token, tours(title_es, title_en)")
       .eq("confirmation_token", token)
       .maybeSingle();
 
@@ -99,7 +99,8 @@ Deno.serve(async (req: Request) => {
       tour_title: tourTitle,
       customer_name: reservation.customer_name || "",
       email: reservation.email,
-      phone: "",
+      phone: reservation.phone || "",
+      reservation_number: reservation.reservation_number || "",
       departure_date: reservation.departure_date,
       travelers: String(reservation.travelers),
       total: String(reservation.total_price_mxn),

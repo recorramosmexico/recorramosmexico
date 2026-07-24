@@ -76,7 +76,7 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
         </div>
         <p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 20px;">Sigue las instrucciones que Stripe te mostro en pantalla para completar tu pago. Una vez confirmado, recibiras un correo con tu numero de reserva y la confirmacion oficial.</p>
         <a href="https://recorramosmexico.com.mx/mi-cuenta" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Ver Estado de mi Reserva</a>
-        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">Si tienes preguntas escribenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">Si tienes preguntas escribenos a:<br><a href="https://wa.me/525623872050" style="color:#E8670A;">wa.me/525623872050</a> o por mail a:<br><a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
       return {
         subject,
         html_body: buildHtml("Solicitud Recibida — Pago Pendiente", body, logoUrl),
@@ -112,7 +112,7 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
           ${remainingBalance ? `<p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#E8670A;"><strong style="color:#374151;">Saldo a pagar en efectivo al abordar:</strong> $${remainingBalance} MXN</p>` : ""}
           <p style="margin:8px 0 0;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Telefono de contacto:</strong> ${data.phone}</p>
         </div>
-        <p style="color:#6b7280;font-size:13px;margin:0;">Si tienes preguntas escribenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+        <p style="color:#6b7280;font-size:13px;margin:0;">Si tienes preguntas escribenos a:<br><a href="https://wa.me/525623872050" style="color:#E8670A;">wa.me/525623872050</a> o por mail a:<br><a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
       return {
         subject,
         html_body: buildHtml("Reserva Confirmada", body, logoUrl),
@@ -144,7 +144,7 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
           <p style="margin:0;font-size:15px;font-weight:800;color:#E8670A;"><strong style="color:#374151;">Saldo a pagar:</strong> $${balance} MXN</p>
         </div>
         <a href="https://recorramosmexico.com.mx/mi-cuenta" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Pagar Saldo Ahora</a>
-        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">¿Preguntas? Escríbenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">Si tienes preguntas escribenos a:<br><a href="https://wa.me/525623872050" style="color:#E8670A;">wa.me/525623872050</a> o por mail a:<br><a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
       return {
         subject,
         html_body: buildHtml("Solicitud de Pago de Saldo", body, logoUrl),
@@ -212,7 +212,7 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
           ${remainingBalance ? `<p style="margin:0 0 6px;font-size:14px;color:#E8670A;font-weight:600;"><strong style="color:#374151;">Saldo a pagar en efectivo al abordar:</strong> $${remainingBalance} MXN</p>` : ""}
           <p style="margin:${depositAmount ? "8px" : "0"} 0 0;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Teléfono de contacto:</strong> ${data.phone}</p>
         </div>
-        <p style="color:#6b7280;font-size:13px;margin:0;">Si tienes preguntas escríbenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+        <p style="color:#6b7280;font-size:13px;margin:0;">Si tienes preguntas escríbenos a:<br><a href="https://wa.me/525623872050" style="color:#E8670A;">wa.me/525623872050</a> o por mail a:<br><a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
       return {
         subject,
         html_body: buildHtml("Reserva Confirmada", body, logoUrl),
@@ -282,11 +282,11 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
           <p style="margin:0 0 4px;color:#92400e;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Tu solicitud original</p>
           <p style="margin:0;color:#92400e;font-size:13px;line-height:1.6;white-space:pre-wrap;">${data.mensaje_original}</p>
         </div>` : ""}
-        <p style="color:#6b7280;font-size:13px;margin:0;">Si tienes más preguntas escribenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+        <p style="color:#6b7280;font-size:13px;margin:0;">Si tienes preguntas escribenos a:<br><a href="https://wa.me/525623872050" style="color:#E8670A;">wa.me/525623872050</a> o por mail a:<br><a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
       return {
         subject,
         html_body: buildHtml("Respuesta a tu Solicitud", body, logoUrl),
-        text_body: buildText(subject, `Hola ${data.nombre},\n\nHemos recibido tu solicitud y esta es nuestra respuesta:\n\n${data.reply}${data.mensaje_original ? `\n\n---\nTu solicitud original:\n${data.mensaje_original}` : ""}\n\nSi tienes mas preguntas escribenos a contacto@recorramosmexico.com.mx`),
+        text_body: buildText(subject, `Hola ${data.nombre},\n\nHemos recibido tu solicitud y esta es nuestra respuesta:\n\n${data.reply}${data.mensaje_original ? `\n\n---\nTu solicitud original:\n${data.mensaje_original}` : ""}\n\nSi tienes preguntas escribenos a:\nwa.me/525623872050 o por mail a:\ncontacto@recorramosmexico.com.mx`),
       };
     }
 
@@ -366,7 +366,7 @@ Confirmar reserva: ${confirmUrl}`),
           <p style="margin:0;color:#c2410c;font-size:13px;line-height:1.6;">Una vez realizada la transferencia, sube tu comprobante de pago desde la seccion "Mis Reservas" en tu cuenta para que confirmemos tu reserva.</p>
         </div>
         <a href="https://recorramosmexico.com.mx/mi-cuenta" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Ir a Mis Reservas</a>
-        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">¿Preguntas? Escribenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">Si tienes preguntas escribenos a:<br><a href="https://wa.me/525623872050" style="color:#E8670A;">wa.me/525623872050</a> o por mail a:<br><a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
       return {
         subject,
         html_body: buildHtml("Reserva por Transferencia Bancaria", body, logoUrl),
@@ -396,7 +396,7 @@ Confirmar reserva: ${confirmUrl}`),
           <p style="margin:0;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total:</strong> $${total} MXN</p>
         </div>
         <a href="https://recorramosmexico.com.mx/mi-cuenta" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Completar Pago Ahora</a>
-        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">Si ya realizaste tu pago, puedes ignorar este mensaje. ¿Preguntas? Escríbenos a <a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">Si ya realizaste tu pago, puedes ignorar este mensaje.<br>Si tienes preguntas escribenos a:<br><a href="https://wa.me/525623872050" style="color:#E8670A;">wa.me/525623872050</a> o por mail a:<br><a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
       return {
         subject,
         html_body: buildHtml("Recordatorio de Pago", body, logoUrl),
