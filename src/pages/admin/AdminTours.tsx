@@ -87,6 +87,7 @@ const toSlug = (s: string) =>
 export default function AdminTours() {
   const [tours, setTours] = useState<Tour[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [occupancy, setOccupancy] = useState<Record<string, { reserved: number; capacity: number }>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -110,6 +111,25 @@ export default function AdminTours() {
     if (toursRes.data) setTours(toursRes.data as Tour[]);
     if (catsRes.data) setCategories(catsRes.data);
     setLoading(false);
+
+    if (toursRes.data) {
+      const { data: resv } = await supabase
+        .from('reservations')
+        .select('tour_id, travelers, payment_status')
+        .in('payment_status', ['pending', 'deposit_paid', 'paid']);
+      if (resv) {
+        const occ: Record<string, { reserved: number; capacity: number }> = {};
+        for (const t of toursRes.data as Tour[]) {
+          occ[t.id] = { reserved: 0, capacity: t.max_capacity };
+        }
+        for (const r of resv as { tour_id: string | null; travelers: number }[]) {
+          if (r.tour_id && occ[r.tour_id]) {
+            occ[r.tour_id].reserved += r.travelers;
+          }
+        }
+        setOccupancy(occ);
+      }
+    }
   }, []);
 
   useEffect(() => { loadAll(); }, [loadAll]);
@@ -787,6 +807,7 @@ export default function AdminTours() {
                 <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 bg-gray-50">
                   <th className="px-5 py-3.5">Tour</th>
                   <th className="px-5 py-3.5 hidden md:table-cell">Categoría</th>
+                  <th className="px-5 py-3.5 hidden lg:table-cell">Ocupación</th>
                   <th className="px-5 py-3.5 hidden sm:table-cell">Precio</th>
                   <th className="px-5 py-3.5">Estado</th>
                   <th className="px-5 py-3.5">Acciones</th>
@@ -821,6 +842,23 @@ export default function AdminTours() {
                       ) : (
                         <span className="text-gray-300 text-xs">—</span>
                       )}
+                    </td>
+                    <td className="px-5 py-4 hidden lg:table-cell">
+                      {(() => {
+                        const o = occupancy[tour.id];
+                        if (!o) return <span className="text-gray-300 text-xs">—</span>;
+                        const pct = o.capacity > 0 ? Math.round((o.reserved / o.capacity) * 100) : 0;
+                        const color = pct >= 100 ? 'bg-red-500' : pct >= 75 ? 'bg-orange-500' : pct >= 50 ? 'bg-yellow-500' : 'bg-green-500';
+                        const textColor = pct >= 100 ? 'text-red-600' : 'text-gray-600';
+                        return (
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                            </div>
+                            <span className={`text-xs font-semibold ${textColor}`}>{o.reserved}/{o.capacity}</span>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-5 py-4 hidden sm:table-cell font-semibold text-[#E8670A]">
                       ${tour.price_mxn.toLocaleString('es-MX')}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, Filter, Trash2, AlertTriangle, Send, Users, CheckCircle, RefreshCw, Ticket, FileText, X } from 'lucide-react';
+import { Download, Filter, Trash2, AlertTriangle, Send, Users, CheckCircle, RefreshCw, Ticket, FileText, X, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { sendEmail } from '../../lib/email';
 import type { Reservation, Tour } from '../../types';
@@ -26,7 +26,7 @@ const today = new Date().toISOString().split('T')[0];
 
 export default function AdminReservaciones() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [tours, setTours] = useState<Pick<Tour, 'id' | 'title_es'>[]>([]);
+  const [tours, setTours] = useState<Pick<Tour, 'id' | 'title_es' | 'departure_dates' | 'max_capacity'>[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [tourFilter, setTourFilter] = useState<string>('all');
@@ -51,6 +51,22 @@ export default function AdminReservaciones() {
   // Proof viewer state
   const [proofUrl, setProofUrl] = useState<string | null>(null);
 
+  // Manual reservation modal state
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualTourId, setManualTourId] = useState('');
+  const [manualDate, setManualDate] = useState('');
+  const [manualTravelers, setManualTravelers] = useState(1);
+  const [manualName, setManualName] = useState('');
+  const [manualEmail, setManualEmail] = useState('');
+  const [manualPhone, setManualPhone] = useState('');
+  const [manualStatus, setManualStatus] = useState<'pending' | 'deposit_paid' | 'paid' | 'refunded' | 'cancelled'>('pending');
+  const [manualPaymentMethod, setManualPaymentMethod] = useState('whatsapp');
+  const [manualNotes, setManualNotes] = useState('');
+  const [manualTotal, setManualTotal] = useState('');
+  const [manualAvailability, setManualAvailability] = useState<Record<string, number>>({});
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualError, setManualError] = useState('');
+
   useEffect(() => {
     Promise.all([
       supabase
@@ -59,7 +75,7 @@ export default function AdminReservaciones() {
         .order('created_at', { ascending: false }),
       supabase
         .from('tours')
-        .select('id, title_es')
+        .select('id, title_es, departure_dates, max_capacity')
         .eq('is_active', true)
         .order('title_es'),
     ]).then(([resRes, toursRes]) => {
@@ -82,6 +98,90 @@ export default function AdminReservaciones() {
     if (!error) setReservations((prev) => prev.filter((r) => r.id !== id));
     setDeleting(false);
     setDeleteId(null);
+  };
+
+  // ── Manual reservation helpers ──────────────────────────────────────────────
+
+  const loadManualAvailability = async (tourId: string) => {
+    if (!tourId) { setManualAvailability({}); return; }
+    const { data } = await supabase.rpc('get_tour_availability', { p_tour_id: tourId });
+    if (data) {
+      const map: Record<string, number> = {};
+      for (const row of data as { departure_date: string; available_spots: number }[]) {
+        map[row.departure_date] = row.available_spots;
+      }
+      setManualAvailability(map);
+    }
+  };
+
+  const openManualModal = () => {
+    setShowManualModal(true);
+    setManualTourId('');
+    setManualDate('');
+    setManualTravelers(1);
+    setManualName('');
+    setManualEmail('');
+    setManualPhone('');
+    setManualStatus('pending');
+    setManualPaymentMethod('whatsapp');
+    setManualNotes('');
+    setManualTotal('');
+    setManualError('');
+    setManualAvailability({});
+  };
+
+  const manualSelectedTour = tours.find((t) => t.id === manualTourId);
+  const manualSelectedSpots = manualDate ? (manualAvailability[manualDate] ?? 0) : 0;
+  const manualDates = manualSelectedTour?.departure_dates ?? [];
+
+  const submitManualReservation = async () => {
+    setManualError('');
+    if (!manualTourId) { setManualError('Selecciona un tour.'); return; }
+    if (!manualDate) { setManualError('Selecciona una fecha de salida.'); return; }
+    if (!manualName.trim()) { setManualError('El nombre del cliente es obligatorio.'); return; }
+    if (!manualEmail.trim()) { setManualError('El email es obligatorio.'); return; }
+    if (!manualPhone.trim()) { setManualError('El teléfono es obligatorio.'); return; }
+    if (manualTravelers < 1) { setManualError('Debe haber al menos 1 viajero.'); return; }
+    if (manualTravelers > manualSelectedSpots) {
+      setManualError(`Solo quedan ${manualSelectedSpots} lugares para esta fecha.`);
+      return;
+    }
+
+    setManualSaving(true);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const { data: reservation, error } = await supabase
+      .from('reservations')
+      .insert({
+        tour_id: manualTourId,
+        customer_name: manualName.trim(),
+        email: manualEmail.trim(),
+        phone: manualPhone.trim(),
+        travelers: manualTravelers,
+        departure_date: manualDate,
+        total_price_mxn: parseFloat(manualTotal) || 0,
+        payment_status: manualStatus,
+        payment_method_type: manualPaymentMethod,
+        notes: manualNotes.trim(),
+      })
+      .select('*, tours(title_es, deposit_percentage)')
+      .single();
+
+    if (error) {
+      const msg = error.message ?? '';
+      if (msg.includes('Capacidad insuficiente')) {
+        setManualError('No hay suficientes lugares disponibles para esta fecha.');
+      } else {
+        setManualError(msg);
+      }
+      setManualSaving(false);
+      return;
+    }
+
+    if (reservation) {
+      setReservations((prev) => [reservation as Reservation, ...prev]);
+    }
+    setManualSaving(false);
+    setShowManualModal(false);
   };
 
   const pastIds = reservations.filter((r) => r.departure_date < today).map((r) => r.id);
@@ -282,6 +382,13 @@ export default function AdminReservaciones() {
               Eliminar pasadas ({pastIds.length})
             </button>
           )}
+          <button
+            onClick={openManualModal}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#E8670A] text-white font-semibold rounded-xl hover:bg-[#B8520A] transition-colors text-sm"
+          >
+            <Plus size={16} />
+            Nueva Reserva
+          </button>
           <button
             onClick={exportCsv}
             className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
@@ -638,6 +745,185 @@ export default function AdminReservaciones() {
             >
               <Download size={15} /> Abrir en nueva pestaña
             </a>
+          </div>
+        </div>
+      )}
+
+      {/* Manual reservation modal */}
+      {showManualModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-lg w-full my-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-bold text-gray-900 text-lg">Nueva Reserva Manual</h3>
+              <button
+                onClick={() => setShowManualModal(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {manualError && (
+              <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium">
+                {manualError}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Tour</label>
+                <select
+                  value={manualTourId}
+                  onChange={(e) => {
+                    setManualTourId(e.target.value);
+                    setManualDate('');
+                    loadManualAvailability(e.target.value);
+                  }}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 bg-white"
+                >
+                  <option value="">Selecciona un tour...</option>
+                  {tours.map((t) => (
+                    <option key={t.id} value={t.id}>{t.title_es}</option>
+                  ))}
+                </select>
+              </div>
+
+              {manualTourId && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Fecha de salida</label>
+                    <select
+                      value={manualDate}
+                      onChange={(e) => setManualDate(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 bg-white"
+                    >
+                      <option value="">Selecciona fecha...</option>
+                      {manualDates.map((d) => {
+                        const spots = manualAvailability[d] ?? 0;
+                        return (
+                          <option key={d} value={d} disabled={spots <= 0}>
+                            {d}{spots <= 0 ? ' — Agotado' : ` (${spots} disponibles)`}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Viajeros</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max={manualSelectedSpots > 0 ? manualSelectedSpots : undefined}
+                      value={manualTravelers}
+                      onChange={(e) => setManualTravelers(parseInt(e.target.value) || 1)}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30"
+                    />
+                    {manualDate && manualSelectedSpots > 0 && (
+                      <p className="text-xs text-orange-600 mt-1">{manualSelectedSpots} lugares disponibles</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Nombre del cliente</label>
+                  <input
+                    type="text"
+                    value={manualName}
+                    onChange={(e) => setManualName(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Teléfono</label>
+                  <input
+                    type="text"
+                    value={manualPhone}
+                    onChange={(e) => setManualPhone(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Email</label>
+                <input
+                  type="email"
+                  value={manualEmail}
+                  onChange={(e) => setManualEmail(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Total (MXN)</label>
+                  <input
+                    type="number"
+                    value={manualTotal}
+                    onChange={(e) => setManualTotal(e.target.value)}
+                    placeholder="0"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Estado del pago</label>
+                  <select
+                    value={manualStatus}
+                    onChange={(e) => setManualStatus(e.target.value as typeof manualStatus)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 bg-white"
+                  >
+                    <option value="pending">Pendiente</option>
+                    <option value="deposit_paid">Anticipo Pagado</option>
+                    <option value="paid">Pagado Completo</option>
+                    <option value="refunded">Reembolsado</option>
+                    <option value="cancelled">Cancelado</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Método de pago</label>
+                <select
+                  value={manualPaymentMethod}
+                  onChange={(e) => setManualPaymentMethod(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 bg-white"
+                >
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="bank_transfer">Transferencia</option>
+                  <option value="cash">Efectivo</option>
+                  <option value="card">Tarjeta</option>
+                  <option value="other">Otro</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Notas</label>
+                <textarea
+                  value={manualNotes}
+                  onChange={(e) => setManualNotes(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowManualModal(false)}
+                className="flex-1 py-2.5 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={submitManualReservation}
+                disabled={manualSaving}
+                className="flex-1 py-2.5 bg-[#E8670A] text-white font-semibold rounded-xl hover:bg-[#B8520A] transition-colors text-sm disabled:opacity-50"
+              >
+                {manualSaving ? 'Guardando...' : 'Guardar reserva'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -36,6 +36,7 @@ export default function TourDetail() {
   const [profilePrefilled, setProfilePrefilled] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'oxxo' | 'bank_transfer'>('card');
   const [transferReservation, setTransferReservation] = useState<{ id: string; reservationNumber: string | null } | null>(null);
+  const [availability, setAvailability] = useState<Record<string, number>>({});
 
   const { register, handleSubmit, watch, formState: { errors }, reset } = useForm<BookingFormData>({
     defaultValues: { travelers: 1 },
@@ -43,6 +44,7 @@ export default function TourDetail() {
 
   const travelers = watch('travelers') || 1;
   const selectedDate = watch('departure_date');
+  const selectedDateSpots = selectedDate ? (availability[selectedDate] ?? tour?.max_capacity ?? 0) : 0;
 
   const _seoTitle = tour ? `${lang === 'en' ? tour.title_en : tour.title_es} desde ${tour.price_mxn.toLocaleString('es-MX')} MXN` : '';
   const _seoDesc = tour ? (lang === 'en' ? tour.description_en : tour.description_es).slice(0, 155) : '';
@@ -78,6 +80,15 @@ export default function TourDetail() {
           .neq('slug', slug)
           .limit(3);
         if (related) setRelatedTours(related);
+
+        const { data: avail } = await supabase.rpc('get_tour_availability', { p_tour_id: data.id });
+        if (avail) {
+          const map: Record<string, number> = {};
+          for (const row of avail as { departure_date: string; available_spots: number }[]) {
+            map[row.departure_date] = row.available_spots;
+          }
+          setAvailability(map);
+        }
       }
       setLoading(false);
     };
@@ -155,7 +166,14 @@ export default function TourDetail() {
       .single();
 
     if (reservationError || !reservation) {
-      setCheckoutError(lang === 'en' ? 'Failed to save reservation. Please try again.' : 'Error al guardar la reserva. Intenta de nuevo.');
+      const msg = reservationError?.message ?? '';
+      if (msg.includes('Capacidad insuficiente')) {
+        setCheckoutError(lang === 'en'
+          ? 'Sorry, there are not enough spots available for this date. Please select another date or fewer travelers.'
+          : 'No hay suficientes lugares disponibles para esta fecha. Por favor selecciona otra fecha o menos viajeros.');
+      } else {
+        setCheckoutError(lang === 'en' ? 'Failed to save reservation. Please try again.' : 'Error al guardar la reserva. Intenta de nuevo.');
+      }
       setSubmitting(false);
       return;
     }
@@ -429,15 +447,21 @@ export default function TourDetail() {
             <div>
               <h2 className="text-2xl font-black text-gray-900 mb-4">{t('tourDetail.departureDates')}</h2>
               <div className="flex flex-wrap gap-3">
-                {(tour.departure_dates || []).map((date, i) => (
-                  <div key={i} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm">
-                    <Calendar size={15} className="text-[#E8670A]" />
-                    <span className="font-medium text-gray-800">{formatDate(date)}</span>
-                    <span className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-0.5 rounded-full">
-                      {tour.max_capacity} {t('tourDetail.spotsLeft')}
-                    </span>
-                  </div>
-                ))}
+                {(tour.departure_dates || []).map((date, i) => {
+                  const spots = availability[date] ?? tour.max_capacity;
+                  const soldOut = spots <= 0;
+                  return (
+                    <div key={i} className={`flex items-center gap-2 px-4 py-2.5 border rounded-xl text-sm ${soldOut ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}>
+                      <Calendar size={15} className={soldOut ? 'text-red-400' : 'text-[#E8670A]'} />
+                      <span className="font-medium text-gray-800">{formatDate(date)}</span>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${soldOut ? 'text-red-600 bg-red-100' : 'text-green-600 bg-green-50'}`}>
+                        {soldOut
+                          ? (lang === 'en' ? 'Sold out' : 'Agotado')
+                          : `${spots} ${t('tourDetail.spotsLeft')}`}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -555,10 +579,15 @@ export default function TourDetail() {
                       <input
                         type="number"
                         min="1"
-                        max={tour.max_capacity}
-                        {...register('travelers', { required: true, min: 1, max: tour.max_capacity })}
+                        max={selectedDateSpots > 0 ? selectedDateSpots : tour.max_capacity}
+                        {...register('travelers', { required: true, min: 1, max: selectedDateSpots > 0 ? selectedDateSpots : tour.max_capacity })}
                         className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30"
                       />
+                      {selectedDateSpots > 0 && selectedDateSpots < tour.max_capacity && (
+                        <p className="text-xs text-orange-600 mt-1">
+                          {lang === 'en' ? `${selectedDateSpots} spots left for this date` : `${selectedDateSpots} lugares disponibles para esta fecha`}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t('tourDetail.bookingForm.departureDate')}</label>
@@ -572,9 +601,14 @@ export default function TourDetail() {
                         className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 ${errors.departure_date ? 'border-red-400' : 'border-gray-200'}`}
                       >
                         <option value="">{t('tourDetail.bookingForm.selectDate')}</option>
-                        {(tour.departure_dates || []).map((d) => (
-                          <option key={d} value={d}>{formatDate(d)}</option>
-                        ))}
+                        {(tour.departure_dates || []).map((d) => {
+                          const spots = availability[d] ?? tour.max_capacity;
+                          return (
+                            <option key={d} value={d} disabled={spots <= 0}>
+                              {formatDate(d)}{spots <= 0 ? (lang === 'en' ? ' — Sold out' : ' — Agotado') : ` (${spots} ${lang === 'en' ? 'spots' : 'lugares'})`}
+                            </option>
+                          );
+                        })}
                       </select>
                       )}
                     </div>
@@ -661,10 +695,10 @@ export default function TourDetail() {
 
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || (selectedDate && selectedDateSpots <= 0)}
                     className="w-full py-3.5 bg-[#E8670A] text-white font-bold rounded-xl hover:bg-[#B8520A] transition-colors disabled:opacity-50"
                   >
-                    {submitting ? t('common.loading') : t('tourDetail.bookingForm.proceedPayment')}
+                    {submitting ? t('common.loading') : (selectedDate && selectedDateSpots <= 0 ? (lang === 'en' ? 'No spots available' : 'Sin lugares disponibles') : t('tourDetail.bookingForm.proceedPayment'))}
                   </button>
 
                   {/* Divider */}
@@ -718,7 +752,7 @@ export default function TourDetail() {
                     <button
                       type="button"
                       onClick={() => handleSubmit((data) => onSubmit(data, 'bank_transfer'))()}
-                      disabled={submitting}
+                      disabled={submitting || (selectedDate && selectedDateSpots <= 0)}
                       className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50"
                     >
                       {submitting ? t('common.loading') : (lang === 'en' ? 'Reserve with Bank Transfer' : 'Reservar con Transferencia')}
