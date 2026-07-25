@@ -44,7 +44,7 @@ export default function TourDetail() {
 
   const travelers = watch('travelers') || 1;
   const selectedDate = watch('departure_date');
-  const selectedDateSpots = selectedDate ? (availability[selectedDate] ?? tour?.max_capacity ?? 0) : 0;
+  const selectedDateSpots = selectedDate ? (availability[selectedDate] ?? 0) : 0;
 
   const _seoTitle = tour ? `${lang === 'en' ? tour.title_en : tour.title_es} desde ${tour.price_mxn.toLocaleString('es-MX')} MXN` : '';
   const _seoDesc = tour ? (lang === 'en' ? tour.description_en : tour.description_es).slice(0, 155) : '';
@@ -81,8 +81,8 @@ export default function TourDetail() {
           .limit(3);
         if (related) setRelatedTours(related);
 
-        const { data: avail } = await supabase.rpc('get_tour_availability', { p_tour_id: data.id });
-        if (avail) {
+        const { data: avail, error: availErr } = await supabase.rpc('get_tour_availability', { p_tour_id: data.id });
+        if (!availErr && avail) {
           const map: Record<string, number> = {};
           for (const row of avail as { departure_date: string; available_spots: number }[]) {
             map[row.departure_date] = row.available_spots;
@@ -448,7 +448,7 @@ export default function TourDetail() {
               <h2 className="text-2xl font-black text-gray-900 mb-4">{t('tourDetail.departureDates')}</h2>
               <div className="flex flex-wrap gap-3">
                 {(tour.departure_dates || []).map((date, i) => {
-                  const spots = availability[date] ?? tour.max_capacity;
+                  const spots = availability[date] ?? 0;
                   const soldOut = spots <= 0;
                   return (
                     <div key={i} className={`flex items-center gap-2 px-4 py-2.5 border rounded-xl text-sm ${soldOut ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}>
@@ -602,7 +602,7 @@ export default function TourDetail() {
                       >
                         <option value="">{t('tourDetail.bookingForm.selectDate')}</option>
                         {(tour.departure_dates || []).map((d) => {
-                          const spots = availability[d] ?? tour.max_capacity;
+                          const spots = availability[d] ?? 0;
                           return (
                             <option key={d} value={d} disabled={spots <= 0}>
                               {formatDate(d)}{spots <= 0 ? (lang === 'en' ? ' — Sold out' : ' — Agotado') : ` (${spots} ${lang === 'en' ? 'spots' : 'lugares'})`}
