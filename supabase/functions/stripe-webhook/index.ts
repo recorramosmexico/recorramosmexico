@@ -2,80 +2,101 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import Stripe from 'npm:stripe@17.7.0';
 import { createClient } from 'npm:@supabase/supabase-js@2.49.1';
 
-const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY')!;
-const stripeWebhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
-const stripe = new Stripe(stripeSecret, {
-  appInfo: { name: 'Bolt Integration', version: '1.0.0' },
-});
-
-const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, stripe-signature',
+};
 
 Deno.serve(async (req) => {
-  try {
-    if (req.method === 'OPTIONS') return new Response(null, { status: 204 });
-    if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+  if (req.method === 'OPTIONS') return new Response(null, { status: 200, headers: corsHeaders });
+  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: corsHeaders });
 
-    const signature = req.headers.get('stripe-signature');
-    if (!signature) return new Response('No signature found', { status: 400 });
+  const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
+  const stripeWebhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
 
-    const body = await req.text();
-
-    let event: Stripe.Event;
-    try {
-      event = await stripe.webhooks.constructEventAsync(body, signature, stripeWebhookSecret);
-    } catch (error: any) {
-      console.error(`Webhook signature verification failed: ${error.message}`);
-      return new Response(`Webhook signature verification failed: ${error.message}`, { status: 400 });
-    }
-
-    EdgeRuntime.waitUntil(handleEvent(event));
-
-    return Response.json({ received: true });
-  } catch (error: any) {
-    console.error('Error processing webhook:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+  if (!stripeSecret || !stripeWebhookSecret) {
+    console.error('Missing STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET');
+    return new Response('Server configuration error', { status: 500, headers: corsHeaders });
   }
+
+  const stripe = new Stripe(stripeSecret, {
+    appInfo: { name: 'Bolt Integration', version: '1.0.0' },
+  });
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+
+  const signature = req.headers.get('stripe-signature');
+  if (!signature) return new Response('No signature found', { status: 400, headers: corsHeaders });
+
+  const body = await req.text();
+
+  let event: Stripe.Event;
+  try {
+    event = await stripe.webhooks.constructEventAsync(body, signature, stripeWebhookSecret);
+  } catch (error: any) {
+    console.error(`Webhook signature verification failed: ${error.message}`);
+    return new Response(`Webhook signature verification failed: ${error.message}`, { status: 400, headers: corsHeaders });
+  }
+
+  // Acknowledge receipt immediately — process async so Stripe doesn't time out
+  EdgeRuntime.waitUntil(handleEvent(event, stripe, supabase));
+
+  return Response.json({ received: true }, { headers: corsHeaders });
 });
 
-async function handleEvent(event: Stripe.Event) {
-  if (event.type === 'checkout.session.async_payment_succeeded') {
-    await handleCheckoutPaymentSucceeded(event.data.object as Stripe.Checkout.Session);
-    return;
-  }
+async function handleEvent(event: Stripe.Event, stripe: Stripe, supabase: ReturnType<typeof createClient>) {
+  console.info(`Processing event: ${event.type} (${event.id})`);
 
-  if (event.type === 'checkout.session.async_payment_failed') {
-    await handleCheckoutPaymentFailed(event.data.object as Stripe.Checkout.Session);
-    return;
-  }
-
-  const stripeData = event?.data?.object ?? {};
-  if (!stripeData || !('customer' in stripeData)) return;
-
-  if (event.type === 'payment_intent.succeeded' && event.data.object.invoice === null) return;
-
-  const { customer: customerId } = stripeData as { customer?: string | null };
-  if (!customerId || typeof customerId !== 'string') {
-    console.error(`No customer on event: ${event.type}`);
-    return;
-  }
-
-  if (event.type === 'checkout.session.completed') {
-    const session = stripeData as Stripe.Checkout.Session;
-    const { mode } = session;
-
-    if (mode === 'subscription') {
-      console.info(`Subscription checkout completed for customer: ${customerId}`);
-      await syncCustomerFromStripe(customerId);
+  try {
+    if (event.type === 'checkout.session.async_payment_succeeded') {
+      await handleCheckoutPaymentSucceeded(event.data.object as Stripe.Checkout.Session, supabase);
       return;
     }
 
-    if (mode === 'payment') {
-      await handleCheckoutPaymentCompleted(session, customerId);
+    if (event.type === 'checkout.session.async_payment_failed') {
+      await handleCheckoutPaymentFailed(event.data.object as Stripe.Checkout.Session, supabase);
+      return;
     }
+
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null;
+
+      if (session.mode === 'subscription' && customerId) {
+        console.info(`Subscription checkout completed for customer: ${customerId}`);
+        await syncCustomerFromStripe(customerId, stripe, supabase);
+        return;
+      }
+
+      if (session.mode === 'payment') {
+        await handleCheckoutPaymentCompleted(session, customerId, supabase);
+      }
+      return;
+    }
+
+    if (event.type === 'payment_intent.succeeded') {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      if (pi.invoice === null) return; // one-time payment handled via checkout.session.completed
+      const customerId = typeof pi.customer === 'string' ? pi.customer : null;
+      if (customerId) await syncCustomerFromStripe(customerId, stripe, supabase);
+      return;
+    }
+
+    console.info(`Unhandled event type: ${event.type}`);
+  } catch (err: any) {
+    console.error(`Error handling event ${event.type}:`, err.message ?? err);
   }
 }
 
-async function handleCheckoutPaymentCompleted(session: Stripe.Checkout.Session, customerId: string) {
+async function handleCheckoutPaymentCompleted(
+  session: Stripe.Checkout.Session,
+  customerId: string | null,
+  supabase: ReturnType<typeof createClient>,
+) {
   const {
     id: checkout_session_id,
     payment_intent,
@@ -95,31 +116,38 @@ async function handleCheckoutPaymentCompleted(session: Stripe.Checkout.Session, 
       ? payment_intent
       : (payment_intent as Stripe.PaymentIntent | null)?.id ?? null;
 
-  const { error: orderError } = await supabase.from('stripe_orders').insert({
-    checkout_session_id,
-    payment_intent_id: paymentIntentId,
-    customer_id: customerId,
-    amount_subtotal,
-    amount_total,
-    currency,
-    payment_status: payment_status ?? 'unpaid',
-    status: isPaid ? 'completed' : 'pending',
-    payment_method_type: pmType,
-  });
+  // Upsert so duplicate webhook deliveries don't error
+  const { error: orderError } = await supabase.from('stripe_orders').upsert(
+    {
+      checkout_session_id,
+      payment_intent_id: paymentIntentId,
+      customer_id: customerId,
+      amount_subtotal,
+      amount_total,
+      currency,
+      payment_status: payment_status ?? 'unpaid',
+      status: isPaid ? 'completed' : 'pending',
+      payment_method_type: pmType,
+    },
+    { onConflict: 'checkout_session_id' },
+  );
 
   if (orderError) {
-    console.error('Error inserting order:', orderError);
+    console.error('Error upserting order:', orderError);
     return;
   }
 
   if (isPaid) {
-    await markReservationPaid(metadata?.reservation_id, checkout_session_id, paymentType);
+    await markReservationPaid(metadata?.reservation_id, checkout_session_id, paymentType, supabase);
   } else {
     console.info(`Async payment pending for session ${checkout_session_id} (${pmType})`);
   }
 }
 
-async function handleCheckoutPaymentSucceeded(session: Stripe.Checkout.Session) {
+async function handleCheckoutPaymentSucceeded(
+  session: Stripe.Checkout.Session,
+  supabase: ReturnType<typeof createClient>,
+) {
   const { id: checkout_session_id, metadata } = session;
 
   const { error } = await supabase
@@ -133,11 +161,14 @@ async function handleCheckoutPaymentSucceeded(session: Stripe.Checkout.Session) 
   }
 
   const paymentType = metadata?.payment_type ?? 'full';
-  await markReservationPaid(metadata?.reservation_id, checkout_session_id, paymentType);
+  await markReservationPaid(metadata?.reservation_id, checkout_session_id, paymentType, supabase);
   console.info(`Async payment succeeded for session ${checkout_session_id}`);
 }
 
-async function handleCheckoutPaymentFailed(session: Stripe.Checkout.Session) {
+async function handleCheckoutPaymentFailed(
+  session: Stripe.Checkout.Session,
+  supabase: ReturnType<typeof createClient>,
+) {
   const { id: checkout_session_id } = session;
 
   const { error } = await supabase
@@ -152,28 +183,24 @@ async function handleCheckoutPaymentFailed(session: Stripe.Checkout.Session) {
   }
 }
 
-// payment_type: 'deposit' → status becomes 'deposit_paid'
-// payment_type: 'balance' → status becomes 'paid' (full payment complete)
-// payment_type: 'full'    → status becomes 'paid'
 async function markReservationPaid(
   reservationId: string | null | undefined,
   sessionId: string,
   paymentType: string,
+  supabase: ReturnType<typeof createClient>,
 ) {
-  if (!reservationId) return;
+  if (!reservationId) {
+    console.info(`No reservation_id in metadata for session ${sessionId}`);
+    return;
+  }
 
   const newStatus = paymentType === 'deposit' ? 'deposit_paid' : 'paid';
 
-  // Generate unique reservation number via DB function
-  const { data: numberRow, error: numberError } = await supabase
-    .rpc('generate_reservation_number');
+  const { data: numberRow, error: numberError } = await supabase.rpc('generate_reservation_number');
 
   if (numberError || !numberRow) {
     console.error(`Error generating reservation number for ${reservationId}:`, numberError);
-    await supabase
-      .from('reservations')
-      .update({ payment_status: newStatus })
-      .eq('id', reservationId);
+    await supabase.from('reservations').update({ payment_status: newStatus }).eq('id', reservationId);
     return;
   }
 
@@ -185,13 +212,12 @@ async function markReservationPaid(
     .eq('id', reservationId);
 
   if (updateError) {
-    console.error(`Error updating reservation ${reservationId} for session ${sessionId}:`, updateError);
+    console.error(`Error updating reservation ${reservationId}:`, updateError);
     return;
   }
 
   console.info(`Reservation ${reservationId} marked as ${newStatus}, number: ${reservationNumber}`);
 
-  // Fetch full reservation + tour data to send confirmation email
   const { data: reservation, error: fetchError } = await supabase
     .from('reservations')
     .select('*, tours(title_es, title_en)')
@@ -225,24 +251,28 @@ async function sendConfirmationEmail(data: Record<string, string>) {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${serviceKey}`,
       },
-      body: JSON.stringify({
-        type: 'reservation_confirmed',
-        to: data.to,
-        data,
-      }),
+      body: JSON.stringify({ type: 'reservation_confirmed', to: data.to, data }),
     });
+
+    if (!res.ok) {
+      console.error(`send-email responded with ${res.status}: ${await res.text()}`);
+    }
   } catch (err) {
     console.error('Error sending confirmation email:', err);
   }
 }
 
-async function syncCustomerFromStripe(customerId: string) {
+async function syncCustomerFromStripe(
+  customerId: string,
+  stripe: Stripe,
+  supabase: ReturnType<typeof createClient>,
+) {
   try {
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
@@ -252,10 +282,9 @@ async function syncCustomerFromStripe(customerId: string) {
     });
 
     if (subscriptions.data.length === 0) {
-      const { error } = await supabase.from('stripe_subscriptions').upsert(
-        { customer_id: customerId, subscription_status: 'not_started' },
-        { onConflict: 'customer_id' },
-      );
+      const { error } = await supabase
+        .from('stripe_subscriptions')
+        .upsert({ customer_id: customerId, subscription_status: 'not_started' }, { onConflict: 'customer_id' });
       if (error) console.error('Error updating subscription status:', error);
       return;
     }
@@ -284,8 +313,7 @@ async function syncCustomerFromStripe(customerId: string) {
 
     if (error) console.error('Error syncing subscription:', error);
     else console.info(`Subscription synced for customer: ${customerId}`);
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Failed to sync subscription for customer ${customerId}:`, error);
-    throw error;
   }
 }
