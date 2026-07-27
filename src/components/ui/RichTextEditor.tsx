@@ -5,6 +5,65 @@ import {
   Link, Minus, Quote, Undo, Redo,
 } from 'lucide-react';
 
+const ALLOWED_TAGS = new Set([
+  'P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'SPAN', 'A',
+  'UL', 'OL', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+  'BLOCKQUOTE', 'HR', 'IMG',
+]);
+
+function sanitizePastedHtml(raw: string): string {
+  if (!raw) return '';
+  const doc = new DOMParser().parseFromString(raw, 'text/html');
+
+  // Replace FB emoji <img> with its alt text (emoji)
+  doc.querySelectorAll('img').forEach((img) => {
+    const alt = img.getAttribute('alt') || '';
+    if (alt) img.replaceWith(doc.createTextNode(alt));
+    else img.remove();
+  });
+
+  // Unwrap spans (keep inner content)
+  doc.querySelectorAll('span').forEach((span) => {
+    span.replaceWith(...Array.from(span.childNodes));
+  });
+
+  // Convert divs to paragraphs (or unwrap if empty)
+  doc.querySelectorAll('div').forEach((div) => {
+    if (div.textContent?.trim()) {
+      const p = doc.createElement('p');
+      p.append(...Array.from(div.childNodes));
+      div.replaceWith(p);
+    } else {
+      div.remove();
+    }
+  });
+
+  // Remove disallowed tags but keep their text content
+  doc.body.querySelectorAll('*').forEach((el) => {
+    if (!ALLOWED_TAGS.has(el.tagName)) {
+      el.replaceWith(...Array.from(el.childNodes));
+    }
+  });
+
+  // Strip all attributes except href on <a> and src/alt on <img>
+  doc.body.querySelectorAll('*').forEach((el) => {
+    Array.from(el.attributes).forEach((attr) => {
+      const name = attr.name.toLowerCase();
+      const keep =
+        (el.tagName === 'A' && name === 'href') ||
+        (el.tagName === 'IMG' && (name === 'src' || name === 'alt'));
+      if (!keep) el.removeAttribute(attr.name);
+    });
+  });
+
+  // Drop empty links
+  doc.querySelectorAll('a').forEach((a) => {
+    if (!a.textContent?.trim() && !a.getAttribute('href')) a.remove();
+  });
+
+  return doc.body.innerHTML.trim();
+}
+
 interface Props {
   value: string;
   onChange: (html: string) => void;
@@ -91,6 +150,16 @@ export default function RichTextEditor({ value, onChange }: Props) {
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
+        onPaste={(e) => {
+          e.preventDefault();
+          const html = e.clipboardData.getData('text/html');
+          const text = e.clipboardData.getData('text/plain');
+          const source = html || text;
+          if (!source) return;
+          const clean = sanitizePastedHtml(source);
+          document.execCommand('insertHTML', false, clean);
+          emit();
+        }}
         onCompositionStart={() => { isComposingRef.current = true; }}
         onCompositionEnd={() => { isComposingRef.current = false; emit(); }}
         onInput={() => { if (!isComposingRef.current) emit(); }}
