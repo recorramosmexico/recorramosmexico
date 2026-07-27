@@ -8,7 +8,6 @@ interface FormData {
   customer_name: string;
   rating: number;
   comment_es: string;
-  comment_en: string;
   tour_id: string;
   is_approved: boolean;
 }
@@ -17,7 +16,6 @@ const EMPTY_FORM: FormData = {
   customer_name: '',
   rating: 5,
   comment_es: '',
-  comment_en: '',
   tour_id: '',
   is_approved: true,
 };
@@ -59,7 +57,6 @@ export default function AdminResenas() {
       customer_name: review.customer_name,
       rating: review.rating,
       comment_es: review.comment_es,
-      comment_en: review.comment_en,
       tour_id: review.tour_id || '',
       is_approved: review.is_approved,
     });
@@ -78,7 +75,7 @@ export default function AdminResenas() {
       customer_name: form.customer_name.trim(),
       rating: form.rating,
       comment_es: form.comment_es.trim(),
-      comment_en: form.comment_en.trim() || form.comment_es.trim(),
+      comment_en: form.comment_es.trim(),
       tour_id: form.tour_id || null,
       is_approved: form.is_approved,
     };
@@ -306,22 +303,12 @@ export default function AdminResenas() {
               </div>
 
               <div>
-                <label className={labelCls}>Comentario en español *</label>
+                <label className={labelCls}>Comentario *</label>
                 <textarea
                   rows={3}
                   value={form.comment_es}
                   onChange={(e) => setForm((p) => ({ ...p, comment_es: e.target.value }))}
                   placeholder="Experiencia del viajero..."
-                  className={`${inputCls} resize-none`}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Comentario en inglés</label>
-                <textarea
-                  rows={3}
-                  value={form.comment_en}
-                  onChange={(e) => setForm((p) => ({ ...p, comment_en: e.target.value }))}
-                  placeholder="Traveler experience... (optional, defaults to Spanish)"
                   className={`${inputCls} resize-none`}
                 />
               </div>

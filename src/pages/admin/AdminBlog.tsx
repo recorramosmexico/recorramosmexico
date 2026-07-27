@@ -12,8 +12,8 @@ export default function AdminBlog() {
   const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
-    title_es: '', title_en: '', slug: '', summary_es: '', summary_en: '',
-    content_es: '', content_en: '', cover_image: '', category: 'destinos', is_published: false,
+    title_es: '', slug: '', summary_es: '',
+    content_es: '', cover_image: '', category: 'destinos', is_published: false,
   });
 
   const handleImageUpload = async (file: File) => {
@@ -57,18 +57,24 @@ export default function AdminBlog() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ title_es: '', title_en: '', slug: '', summary_es: '', summary_en: '', content_es: '', content_en: '', cover_image: '', category: 'destinos', is_published: false });
+    setForm({ title_es: '', slug: '', summary_es: '', content_es: '', cover_image: '', category: 'destinos', is_published: false });
     setShowForm(true);
   };
 
   const openEdit = (post: BlogPost) => {
     setEditing(post);
-    setForm({ title_es: post.title_es, title_en: post.title_en, slug: post.slug, summary_es: post.summary_es, summary_en: post.summary_en, content_es: post.content_es, content_en: post.content_en, cover_image: post.cover_image, category: post.category, is_published: post.is_published });
+    setForm({ title_es: post.title_es, slug: post.slug, summary_es: post.summary_es, content_es: post.content_es, cover_image: post.cover_image, category: post.category, is_published: post.is_published });
     setShowForm(true);
   };
 
   const handleSave = async () => {
-    const payload = { ...form, slug: form.slug || form.title_es.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') };
+    const slug = form.slug || form.title_es.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const payload = {
+      title_es: form.title_es, title_en: form.title_es,
+      slug, summary_es: form.summary_es, summary_en: form.summary_es,
+      content_es: form.content_es, content_en: form.content_es,
+      cover_image: form.cover_image, category: form.category, is_published: form.is_published,
+    };
     if (editing) {
       await supabase.from('blog_posts').update(payload).eq('id', editing.id);
     } else {
@@ -115,12 +121,8 @@ export default function AdminBlog() {
             <h2 className="text-xl font-black text-gray-900 mb-6">{editing ? 'Editar artículo' : 'Nuevo artículo'}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Título en español</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Título</label>
                 <input value={form.title_es} onChange={(e) => setForm((p) => ({ ...p, title_es: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Título en inglés</label>
-                <input value={form.title_en} onChange={(e) => setForm((p) => ({ ...p, title_en: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5">Slug</label>
@@ -158,21 +160,13 @@ export default function AdminBlog() {
                 )}
                 {uploadError && <p className="text-xs text-red-500 mt-1.5">{uploadError}</p>}
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Resumen en español</label>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Resumen</label>
                 <textarea rows={3} value={form.summary_es} onChange={(e) => setForm((p) => ({ ...p, summary_es: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30" />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Resumen en inglés</label>
-                <textarea rows={3} value={form.summary_en} onChange={(e) => setForm((p) => ({ ...p, summary_en: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Contenido en español (HTML)</label>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Contenido (HTML)</label>
                 <textarea rows={6} value={form.content_es} onChange={(e) => setForm((p) => ({ ...p, content_es: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 font-mono" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Contenido en inglés (HTML)</label>
-                <textarea rows={6} value={form.content_en} onChange={(e) => setForm((p) => ({ ...p, content_en: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 font-mono" />
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="is_published" checked={form.is_published} onChange={(e) => setForm((p) => ({ ...p, is_published: e.target.checked }))} className="w-4 h-4 accent-[#E8670A]" />

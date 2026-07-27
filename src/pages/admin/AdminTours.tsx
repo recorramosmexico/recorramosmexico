@@ -13,15 +13,12 @@ import type { Category, ItineraryDay, Tour } from '../../types';
 interface ItineraryEntry {
   day: number;
   title_es: string;
-  title_en: string;
   desc_es: string;
-  desc_en: string;
 }
 
 interface FormData {
   // General
   title_es: string;
-  title_en: string;
   slug: string;
   category_id: string;
   destination: string;
@@ -31,7 +28,6 @@ interface FormData {
   is_featured: boolean;
   // Content
   description_es: string;
-  description_en: string;
   // Logistics
   price_mxn: string;
   duration_days: string;
@@ -41,9 +37,7 @@ interface FormData {
   departure_dates: string[];
   // Includes / Excludes
   includes_es: string[];
-  includes_en: string[];
   excludes_es: string[];
-  excludes_en: string[];
   // Itinerary
   itinerary: ItineraryEntry[];
   // Images
@@ -51,15 +45,15 @@ interface FormData {
 }
 
 const EMPTY_FORM: FormData = {
-  title_es: '', title_en: '', slug: '', category_id: '', destination: '',
+  title_es: '', slug: '', category_id: '', destination: '',
   difficulty: 'medium', meeting_point: '', is_active: true, is_featured: false,
-  description_es: '', description_en: '',
+  description_es: '',
   price_mxn: '', duration_days: '', min_participants: '1', max_capacity: '20',
   deposit_percentage: '40',
   departure_dates: [],
-  includes_es: [''], includes_en: [''],
-  excludes_es: [''], excludes_en: [''],
-  itinerary: [{ day: 1, title_es: '', title_en: '', desc_es: '', desc_en: '' }],
+  includes_es: [''],
+  excludes_es: [''],
+  itinerary: [{ day: 1, title_es: '', desc_es: '' }],
   image_urls: [],
 };
 
@@ -150,7 +144,6 @@ export default function AdminTours() {
     setEditingTour(tour);
     setForm({
       title_es: tour.title_es,
-      title_en: tour.title_en,
       slug: tour.slug,
       category_id: tour.category_id ?? '',
       destination: tour.destination,
@@ -159,7 +152,6 @@ export default function AdminTours() {
       is_active: tour.is_active,
       is_featured: tour.is_featured,
       description_es: tour.description_es,
-      description_en: tour.description_en,
       price_mxn: String(tour.price_mxn),
       duration_days: String(tour.duration_days),
       min_participants: String(tour.min_participants ?? 1),
@@ -167,18 +159,14 @@ export default function AdminTours() {
       deposit_percentage: String(tour.deposit_percentage ?? 40),
       departure_dates: tour.departure_dates ?? [],
       includes_es: tour.includes_es?.length ? tour.includes_es : [''],
-      includes_en: tour.includes_en?.length ? tour.includes_en : [''],
       excludes_es: tour.excludes_es?.length ? tour.excludes_es : [''],
-      excludes_en: tour.excludes_en?.length ? tour.excludes_en : [''],
       itinerary: tour.itinerary_es?.length
-        ? tour.itinerary_es.map((d, i) => ({
+        ? tour.itinerary_es.map((d) => ({
             day: d.day,
             title_es: d.title,
-            title_en: (tour.itinerary_en?.[i] as ItineraryDay | undefined)?.title ?? '',
             desc_es: d.description,
-            desc_en: (tour.itinerary_en?.[i] as ItineraryDay | undefined)?.description ?? '',
           }))
-        : [{ day: 1, title_es: '', title_en: '', desc_es: '', desc_en: '' }],
+        : [{ day: 1, title_es: '', desc_es: '' }],
       image_urls: tour.image_urls ?? [],
     });
     setSection('general');
@@ -228,7 +216,7 @@ export default function AdminTours() {
 
     const payload = {
       title_es: form.title_es.trim(),
-      title_en: form.title_en.trim(),
+      title_en: form.title_es.trim(),
       slug: form.slug || toSlug(form.title_es),
       category_id: form.category_id || null,
       destination: form.destination.trim(),
@@ -237,7 +225,7 @@ export default function AdminTours() {
       is_active: form.is_active,
       is_featured: form.is_featured,
       description_es: form.description_es.trim(),
-      description_en: form.description_en.trim(),
+      description_en: form.description_es.trim(),
       price_mxn: parseFloat(form.price_mxn) || 0,
       duration_days: parseInt(form.duration_days) || 1,
       min_participants: parseInt(form.min_participants) || 1,
@@ -245,11 +233,11 @@ export default function AdminTours() {
       deposit_percentage: Math.min(100, Math.max(10, parseInt(form.deposit_percentage) || 40)),
       departure_dates: form.departure_dates.filter(Boolean),
       includes_es: form.includes_es.filter(Boolean),
-      includes_en: form.includes_en.filter(Boolean),
+      includes_en: form.includes_es.filter(Boolean),
       excludes_es: form.excludes_es.filter(Boolean),
-      excludes_en: form.excludes_en.filter(Boolean),
+      excludes_en: form.excludes_es.filter(Boolean),
       itinerary_es: form.itinerary.map((d) => ({ day: d.day, title: d.title_es, description: d.desc_es })),
-      itinerary_en: form.itinerary.map((d) => ({ day: d.day, title: d.title_en, description: d.desc_en })),
+      itinerary_en: form.itinerary.map((d) => ({ day: d.day, title: d.title_es, description: d.desc_es })),
       image_urls: form.image_urls,
     };
 
@@ -355,18 +343,11 @@ export default function AdminTours() {
           <div className="space-y-5">
             {sectionTitle('Información General', 'Datos básicos de identificación del tour')}
 
-            {/* Títulos */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>Título en español *</label>
-                <input value={form.title_es} onChange={(e) => handleTitleEsChange(e.target.value)}
-                  placeholder="Ej: Tour al Cañón del Sumidero" className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>Título en inglés</label>
-                <input value={form.title_en} onChange={(e) => setF({ title_en: e.target.value })}
-                  placeholder="Ej: Sumidero Canyon Tour" className={inputCls} />
-              </div>
+            {/* Título */}
+            <div>
+              <label className={labelCls}>Título *</label>
+              <input value={form.title_es} onChange={(e) => handleTitleEsChange(e.target.value)}
+                placeholder="Ej: Tour al Cañón del Sumidero" className={inputCls} />
             </div>
 
             {/* Slug */}
@@ -450,19 +431,12 @@ export default function AdminTours() {
       case 'content':
         return (
           <div className="space-y-5">
-            {sectionTitle('Contenido del Tour', 'Descripciones en ambos idiomas')}
+            {sectionTitle('Contenido del Tour', 'Descripción del tour')}
             <div>
-              <label className={labelCls}>Descripción en español</label>
+              <label className={labelCls}>Descripción</label>
               <textarea rows={5} value={form.description_es}
                 onChange={(e) => setF({ description_es: e.target.value })}
-                placeholder="Describe la experiencia del tour en español..."
-                className={`${inputCls} resize-none`} />
-            </div>
-            <div>
-              <label className={labelCls}>Descripción en inglés</label>
-              <textarea rows={5} value={form.description_en}
-                onChange={(e) => setF({ description_en: e.target.value })}
-                placeholder="Describe the tour experience in English..."
+                placeholder="Describe la experiencia del tour..."
                 className={`${inputCls} resize-none`} />
             </div>
           </div>
@@ -592,7 +566,7 @@ export default function AdminTours() {
       case 'features':
         return (
           <div className="space-y-6">
-            {sectionTitle('Incluye / No incluye', 'Lista de características en ambos idiomas')}
+            {sectionTitle('Incluye / No incluye', 'Lista de características del tour')}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
@@ -602,10 +576,8 @@ export default function AdminTours() {
                   </div>
                   <span className="text-sm font-black text-gray-800">Incluye</span>
                 </div>
-                <DynList label="En español" items={form.includes_es}
+                <DynList label="Elementos" items={form.includes_es}
                   onChange={(v) => setF({ includes_es: v })} />
-                <DynList label="En inglés" items={form.includes_en}
-                  onChange={(v) => setF({ includes_en: v })} />
               </div>
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-1">
@@ -614,10 +586,8 @@ export default function AdminTours() {
                   </div>
                   <span className="text-sm font-black text-gray-800">No incluye</span>
                 </div>
-                <DynList label="En español" items={form.excludes_es}
+                <DynList label="Elementos" items={form.excludes_es}
                   onChange={(v) => setF({ excludes_es: v })} />
-                <DynList label="En inglés" items={form.excludes_en}
-                  onChange={(v) => setF({ excludes_en: v })} />
               </div>
             </div>
           </div>
@@ -642,9 +612,9 @@ export default function AdminTours() {
                     </button>
                   )}
                 </div>
-                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 grid grid-cols-1 gap-4">
                   <div>
-                    <label className={labelCls}>Título (español)</label>
+                    <label className={labelCls}>Título</label>
                     <input value={day.title_es}
                       onChange={(e) => {
                         const next = [...form.itinerary]; next[idx] = { ...next[idx], title_es: e.target.value };
@@ -653,28 +623,10 @@ export default function AdminTours() {
                       placeholder="Ej: Llegada y bienvenida" className={inputCls} />
                   </div>
                   <div>
-                    <label className={labelCls}>Título (inglés)</label>
-                    <input value={day.title_en}
-                      onChange={(e) => {
-                        const next = [...form.itinerary]; next[idx] = { ...next[idx], title_en: e.target.value };
-                        setF({ itinerary: next });
-                      }}
-                      placeholder="Ej: Arrival and welcome" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Descripción (español)</label>
+                    <label className={labelCls}>Descripción</label>
                     <textarea rows={3} value={day.desc_es}
                       onChange={(e) => {
                         const next = [...form.itinerary]; next[idx] = { ...next[idx], desc_es: e.target.value };
-                        setF({ itinerary: next });
-                      }}
-                      className={`${inputCls} resize-none`} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Descripción (inglés)</label>
-                    <textarea rows={3} value={day.desc_en}
-                      onChange={(e) => {
-                        const next = [...form.itinerary]; next[idx] = { ...next[idx], desc_en: e.target.value };
                         setF({ itinerary: next });
                       }}
                       className={`${inputCls} resize-none`} />
@@ -686,7 +638,7 @@ export default function AdminTours() {
               onClick={() => setF({
                 itinerary: [
                   ...form.itinerary,
-                  { day: form.itinerary.length + 1, title_es: '', title_en: '', desc_es: '', desc_en: '' },
+                  { day: form.itinerary.length + 1, title_es: '', desc_es: '' },
                 ],
               })}
               className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-[#E8670A]/40 text-[#E8670A] text-sm font-semibold rounded-xl hover:border-[#E8670A] hover:bg-[#E8670A]/5 transition-all w-full justify-center"

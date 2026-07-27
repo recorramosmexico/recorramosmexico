@@ -5,20 +5,16 @@ import type { Category } from '../../types';
 
 interface FormData {
   name_es: string;
-  name_en: string;
   slug: string;
   icon_name: string;
   description_es: string;
-  description_en: string;
 }
 
 const EMPTY_FORM: FormData = {
   name_es: '',
-  name_en: '',
   slug: '',
   icon_name: '',
   description_es: '',
-  description_en: '',
 };
 
 const toSlug = (text: string) =>
@@ -61,11 +57,9 @@ export default function AdminCategorias() {
     setEditing(cat);
     setForm({
       name_es: cat.name_es,
-      name_en: cat.name_en,
       slug: cat.slug,
       icon_name: cat.icon_name || '',
       description_es: cat.description_es || '',
-      description_en: cat.description_en || '',
     });
     setError('');
     setShowModal(true);
@@ -80,8 +74,7 @@ export default function AdminCategorias() {
   };
 
   const handleSave = async () => {
-    if (!form.name_es.trim()) { setError('El nombre en español es obligatorio.'); return; }
-    if (!form.name_en.trim()) { setError('El nombre en inglés es obligatorio.'); return; }
+    if (!form.name_es.trim()) { setError('El nombre es obligatorio.'); return; }
     if (!form.slug.trim()) { setError('El slug es obligatorio.'); return; }
 
     setSaving(true);
@@ -89,11 +82,11 @@ export default function AdminCategorias() {
 
     const payload = {
       name_es: form.name_es.trim(),
-      name_en: form.name_en.trim(),
+      name_en: form.name_es.trim(),
       slug: form.slug.trim(),
       icon_name: form.icon_name.trim() || null,
       description_es: form.description_es.trim() || null,
-      description_en: form.description_en.trim() || null,
+      description_en: form.description_es.trim() || null,
     };
 
     const { error: err } = editing
@@ -170,7 +163,6 @@ export default function AdminCategorias() {
                   <tr key={cat.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-4">
                       <p className="font-semibold text-gray-900">{cat.name_es}</p>
-                      <p className="text-gray-400 text-xs">{cat.name_en}</p>
                     </td>
                     <td className="px-5 py-4 hidden md:table-cell">
                       <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-mono">
@@ -243,27 +235,15 @@ export default function AdminCategorias() {
               )}
 
               {/* Nombres bilingues */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Nombre en español *</label>
-                  <input
-                    type="text"
-                    value={form.name_es}
-                    onChange={(e) => handleNameEsChange(e.target.value)}
-                    placeholder="Ej: Aventura"
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Nombre en inglés *</label>
-                  <input
-                    type="text"
-                    value={form.name_en}
-                    onChange={(e) => setForm((p) => ({ ...p, name_en: e.target.value }))}
-                    placeholder="Ej: Adventure"
-                    className={inputCls}
-                  />
-                </div>
+              <div>
+                <label className={labelCls}>Nombre *</label>
+                <input
+                  type="text"
+                  value={form.name_es}
+                  onChange={(e) => handleNameEsChange(e.target.value)}
+                  placeholder="Ej: Aventura"
+                  className={inputCls}
+                />
               </div>
 
               {/* Slug + Icono */}
@@ -294,22 +274,12 @@ export default function AdminCategorias() {
 
               {/* Descripciones */}
               <div>
-                <label className={labelCls}>Descripción en español</label>
+                <label className={labelCls}>Descripción</label>
                 <textarea
                   rows={2}
                   value={form.description_es}
                   onChange={(e) => setForm((p) => ({ ...p, description_es: e.target.value }))}
                   placeholder="Breve descripción de esta categoría..."
-                  className={`${inputCls} resize-none`}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Descripción en inglés</label>
-                <textarea
-                  rows={2}
-                  value={form.description_en}
-                  onChange={(e) => setForm((p) => ({ ...p, description_en: e.target.value }))}
-                  placeholder="Brief description of this category..."
                   className={`${inputCls} resize-none`}
                 />
               </div>
