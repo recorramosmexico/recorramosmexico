@@ -12,6 +12,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { sendEmail } from '../lib/email';
 import type { Tour, BookingFormData } from '../types';
+import { getEffectivePrice, isPresaleActive } from '../types';
 import TourCard from '../components/ui/TourCard';
 import { useSEO } from '../hooks/useSEO';
 import { tourSchema, breadcrumbSchema } from '../lib/structuredData';
@@ -70,7 +71,7 @@ export default function TourDetail() {
   const selectedDate = watch('departure_date');
   const selectedDateSpots = selectedDate ? (availability[selectedDate] ?? 0) : 0;
 
-  const _seoTitle = tour ? `${lang === 'en' ? tour.title_en : tour.title_es} desde ${tour.price_mxn.toLocaleString('es-MX')} MXN` : '';
+  const _seoTitle = tour ? `${lang === 'en' ? tour.title_en : tour.title_es} desde ${getEffectivePrice(tour).toLocaleString('es-MX')} MXN` : '';
   const _seoDesc = tour ? (lang === 'en' ? tour.description_en : tour.description_es).slice(0, 155) : '';
   const _seoJsonLd = tour ? [
     tourSchema(tour, lang),
@@ -162,7 +163,8 @@ export default function TourDetail() {
     setCheckoutError('');
 
     const numTravelers = Number(data.travelers);
-    const totalPrice = tour.price_mxn * numTravelers;
+    const unitPrice = getEffectivePrice(tour);
+    const totalPrice = unitPrice * numTravelers;
     const depositPct = tour.deposit_percentage ?? 40;
     const depositAmount = Math.ceil(totalPrice * depositPct / 100);
     const remainingBalance = totalPrice - depositAmount;
@@ -284,7 +286,7 @@ export default function TourDetail() {
     const msg = !hasFuture
       ? `¡Hola! Me interesa saber si próximamente habrá nuevas fechas de este tour que ya pasó: *${title}*\nFecha: ${lastDate}`
       : user
-        ? `¡Hola! Me interesa reservar el tour: *${title}*\nFecha: ${selectedDate || 'Por confirmar'}\nViajeros: ${travelers}\nPrecio estimado: ${(tour.price_mxn * travelers).toLocaleString('es-MX')} MXN`
+        ? `¡Hola! Me interesa reservar el tour: *${title}*\nFecha: ${selectedDate || 'Por confirmar'}\nViajeros: ${travelers}\nPrecio estimado: ${(getEffectivePrice(tour) * travelers).toLocaleString('es-MX')} MXN`
         : `¡Hola! Me interesa reservar el tour: *${title}*`;
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
   };
@@ -505,12 +507,27 @@ export default function TourDetail() {
               <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                 <div className="bg-[#1A1A1A] p-6">
                   <p className="text-gray-400 text-sm">{t('tourDetail.from')}</p>
-                  <div className="flex items-baseline gap-1">
+                  <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="text-4xl font-black text-[#E8670A]">
-                      ${tour.price_mxn.toLocaleString('es-MX')}
+                      ${getEffectivePrice(tour).toLocaleString('es-MX')}
                     </span>
                     <span className="text-gray-400 text-sm">{t('tourDetail.perPerson')}</span>
+                    {isPresaleActive(tour) && (
+                      <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs font-bold rounded-full">
+                        Preventa
+                      </span>
+                    )}
                   </div>
+                  {isPresaleActive(tour) && tour.price_mxn !== getEffectivePrice(tour) && (
+                    <p className="text-gray-500 text-xs mt-1 line-through">
+                      ${tour.price_mxn.toLocaleString('es-MX')} {t('common.currency')}
+                    </p>
+                  )}
+                  {isPresaleActive(tour) && tour.presale_end_date && (
+                    <p className="text-green-400 text-xs mt-1">
+                      {lang === 'en' ? 'Presale ends' : 'Preventa termina'} {new Date(tour.presale_end_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                  )}
                   <p className="text-gray-400 text-xs mt-1">{t('common.currency')} · {tour.duration_days} {t('tourDetail.days')}</p>
                 </div>
 
@@ -694,7 +711,7 @@ export default function TourDetail() {
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm font-semibold text-gray-700">{t('tourDetail.bookingForm.total')}</span>
                           <span className="text-lg font-black text-gray-700 line-through opacity-50">
-                            ${(tour.price_mxn * travelers).toLocaleString('es-MX')} MXN
+                            ${(getEffectivePrice(tour) * travelers).toLocaleString('es-MX')} MXN
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -702,13 +719,13 @@ export default function TourDetail() {
                             {lang === 'en' ? `Deposit (${tour.deposit_percentage ?? 40}%)` : `Anticipo (${tour.deposit_percentage ?? 40}%)`}
                           </span>
                           <span className="text-xl font-black text-[#E8670A]">
-                            ${Math.ceil(tour.price_mxn * travelers * (tour.deposit_percentage ?? 40) / 100).toLocaleString('es-MX')} MXN
+                            ${Math.ceil(getEffectivePrice(tour) * travelers * (tour.deposit_percentage ?? 40) / 100).toLocaleString('es-MX')} MXN
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 mt-2 border-t border-orange-100 pt-2">
                           {lang === 'en'
-                            ? `Remaining balance $${(tour.price_mxn * travelers - Math.ceil(tour.price_mxn * travelers * (tour.deposit_percentage ?? 40) / 100)).toLocaleString('es-MX')} MXN paid in cash when boarding.`
-                            : `Saldo restante $${(tour.price_mxn * travelers - Math.ceil(tour.price_mxn * travelers * (tour.deposit_percentage ?? 40) / 100)).toLocaleString('es-MX')} MXN se paga en efectivo al abordar.`}
+                            ? `Remaining balance ${(getEffectivePrice(tour) * travelers - Math.ceil(getEffectivePrice(tour) * travelers * (tour.deposit_percentage ?? 40) / 100)).toLocaleString('es-MX')} MXN paid in cash when boarding.`
+                            : `Saldo restante ${(getEffectivePrice(tour) * travelers - Math.ceil(getEffectivePrice(tour) * travelers * (tour.deposit_percentage ?? 40) / 100)).toLocaleString('es-MX')} MXN se paga en efectivo al abordar.`}
                         </p>
                       </div>
                     </div>
@@ -806,7 +823,7 @@ export default function TourDetail() {
                           {lang === 'en' ? 'Deposit to transfer: ' : 'Anticipo a transferir: '}
                         </span>
                         <span className="font-black text-[#E8670A]">
-                          ${Math.ceil(tour.price_mxn * travelers * (tour.deposit_percentage ?? 40) / 100).toLocaleString('es-MX')} MXN
+                          ${Math.ceil(getEffectivePrice(tour) * travelers * (tour.deposit_percentage ?? 40) / 100).toLocaleString('es-MX')} MXN
                         </span>
                       </div>
                     )}
@@ -877,7 +894,7 @@ export default function TourDetail() {
                         <div className="flex justify-between">
                           <span className="font-semibold text-[#E8670A]">{lang === 'en' ? 'Deposit to transfer' : 'Anticipo a transferir'}</span>
                           <span className="font-black text-[#E8670A] text-lg">
-                            ${Math.ceil(tour.price_mxn * travelers * (tour.deposit_percentage ?? 40) / 100).toLocaleString('es-MX')} MXN
+                            ${Math.ceil(getEffectivePrice(tour) * travelers * (tour.deposit_percentage ?? 40) / 100).toLocaleString('es-MX')} MXN
                           </span>
                         </div>
                       </div>

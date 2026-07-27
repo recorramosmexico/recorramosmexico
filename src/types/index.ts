@@ -25,6 +25,8 @@ export interface Tour {
   category_id: string | null;
   destination: string;
   price_mxn: number;
+  presale_price_mxn: number | null;
+  presale_end_date: string | null;
   duration_days: number;
   min_participants: number;
   max_capacity: number;
@@ -103,4 +105,22 @@ export interface BookingFormData {
   travelers: number;
   departure_date: string;
   notes: string;
+}
+
+export function getEffectivePrice(tour: Pick<Tour, 'price_mxn' | 'presale_price_mxn' | 'presale_end_date'>): number {
+  if (tour.presale_price_mxn != null && tour.presale_end_date) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(tour.presale_end_date + 'T00:00:00');
+    if (today <= end) return tour.presale_price_mxn;
+  }
+  return tour.price_mxn;
+}
+
+export function isPresaleActive(tour: Pick<Tour, 'presale_price_mxn' | 'presale_end_date'>): boolean {
+  if (tour.presale_price_mxn == null || !tour.presale_end_date) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(tour.presale_end_date + 'T00:00:00');
+  return today <= end;
 }

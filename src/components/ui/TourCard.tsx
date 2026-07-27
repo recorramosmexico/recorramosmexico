@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MapPin, Clock, Users, Calendar } from 'lucide-react';
 import type { Tour } from '../../types';
+import { getEffectivePrice, isPresaleActive } from '../../types';
 
 interface TourCardProps {
   tour: Tour;
@@ -84,10 +85,22 @@ export default function TourCard({ tour }: TourCardProps) {
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
           <div>
             <p className="text-xs text-gray-400">{t('tours.card.from')}</p>
-            <p className="text-xl font-black text-[#E8670A]">
-              ${tour.price_mxn.toLocaleString('es-MX')}
-              <span className="text-xs font-normal text-gray-400 ml-1">{t('tours.card.perPerson')}</span>
-            </p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-xl font-black text-[#E8670A]">
+                ${getEffectivePrice(tour).toLocaleString('es-MX')}
+                <span className="text-xs font-normal text-gray-400 ml-1">{t('tours.card.perPerson')}</span>
+              </p>
+              {isPresaleActive(tour) && (
+                <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                  Preventa
+                </span>
+              )}
+            </div>
+            {isPresaleActive(tour) && tour.price_mxn !== getEffectivePrice(tour) && (
+              <p className="text-xs text-gray-400 line-through">
+                ${tour.price_mxn.toLocaleString('es-MX')}
+              </p>
+            )}
           </div>
           <span className="px-4 py-2 bg-[#E8670A] text-white text-sm font-semibold rounded-xl group-hover:bg-[#B8520A] transition-colors">
             {t('tours.card.viewDetail')}
