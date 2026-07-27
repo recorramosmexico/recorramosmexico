@@ -53,6 +53,29 @@ export default function BlogPost() {
     );
   }
 
+  const title = post ? (lang === 'en' ? post.title_en : post.title_es) ?? '' : '';
+  const summary = post ? (lang === 'en' ? post.summary_en : post.summary_es) ?? '' : '';
+  const content = post ? (lang === 'en' ? post.content_en : post.content_es) ?? '' : '';
+
+  useSEO({
+    title: title || 'Blog',
+    description: summary.slice(0, 155),
+    path: post ? `/blog/${post.slug}` : '/blog',
+    image: post?.cover_image || '/Logo_Bandera.jpg',
+    type: 'article',
+    publishedTime: post?.created_at,
+    jsonLd: post
+      ? [
+          blogPostSchema(post, lang),
+          breadcrumbSchema([
+            { name: 'Inicio', path: '/' },
+            { name: 'Blog', path: '/blog' },
+            { name: title, path: `/blog/${post.slug}` },
+          ]),
+        ]
+      : undefined,
+  });
+
   if (!post) {
     return (
       <div className="min-h-screen pt-20 flex flex-col items-center justify-center text-center px-4">
@@ -63,27 +86,6 @@ export default function BlogPost() {
       </div>
     );
   }
-
-  const title = lang === 'en' ? post.title_en : post.title_es;
-  const summary = lang === 'en' ? post.summary_en : post.summary_es;
-  const content = lang === 'en' ? post.content_en : post.content_es;
-
-  useSEO({
-    title,
-    description: summary.slice(0, 155),
-    path: `/blog/${post.slug}`,
-    image: post.cover_image || '/Logo_Bandera.jpg',
-    type: 'article',
-    publishedTime: post.created_at,
-    jsonLd: [
-      blogPostSchema(post, lang),
-      breadcrumbSchema([
-        { name: 'Inicio', path: '/' },
-        { name: 'Blog', path: '/blog' },
-        { name: title, path: `/blog/${post.slug}` },
-      ]),
-    ],
-  });
 
   return (
     <div className="min-h-screen bg-white pt-20">
