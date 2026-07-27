@@ -2,20 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Plus, Trash2, Eye, EyeOff, Star, X, ChevronRight,
   Upload, Image, Check, AlertCircle, Search, MapPin,
-  Globe, Calendar, Users, DollarSign, Clock, List,
+  Globe, Users, DollarSign, Clock, List,
   ChevronDown, Map, Tag,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import type { Category, ItineraryDay, Tour } from '../../types';
+import type { Category, Tour } from '../../types';
 import RichTextEditor from '../../components/ui/RichTextEditor';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface ItineraryEntry {
-  day: number;
-  title_es: string;
-  desc_es: string;
-}
 
 interface FormData {
   // General
@@ -41,8 +35,6 @@ interface FormData {
   // Includes / Excludes
   includes_es: string[];
   excludes_es: string[];
-  // Itinerary
-  itinerary: ItineraryEntry[];
   // Images
   image_urls: string[];
 }
@@ -56,7 +48,6 @@ const EMPTY_FORM: FormData = {
   departure_dates: [],
   includes_es: [''],
   excludes_es: [''],
-  itinerary: [{ day: 1, title_es: '', desc_es: '' }],
   image_urls: [],
 };
 
@@ -65,7 +56,6 @@ const SECTIONS = [
   { id: 'content', label: 'Contenido', icon: <Globe size={16} /> },
   { id: 'logistics', label: 'Logística', icon: <Clock size={16} /> },
   { id: 'features', label: 'Incluye / No incluye', icon: <List size={16} /> },
-  { id: 'itinerary', label: 'Itinerario', icon: <Calendar size={16} /> },
   { id: 'images', label: 'Imágenes', icon: <Image size={16} /> },
 ];
 
@@ -165,13 +155,6 @@ export default function AdminTours() {
       departure_dates: tour.departure_dates ?? [],
       includes_es: tour.includes_es?.length ? tour.includes_es : [''],
       excludes_es: tour.excludes_es?.length ? tour.excludes_es : [''],
-      itinerary: tour.itinerary_es?.length
-        ? tour.itinerary_es.map((d) => ({
-            day: d.day,
-            title_es: d.title,
-            desc_es: d.description,
-          }))
-        : [{ day: 1, title_es: '', desc_es: '' }],
       image_urls: tour.image_urls ?? [],
     });
     setSection('general');
@@ -243,8 +226,6 @@ export default function AdminTours() {
       includes_en: form.includes_es.filter(Boolean),
       excludes_es: form.excludes_es.filter(Boolean),
       excludes_en: form.excludes_es.filter(Boolean),
-      itinerary_es: form.itinerary.map((d) => ({ day: d.day, title: d.title_es, description: d.desc_es })),
-      itinerary_en: form.itinerary.map((d) => ({ day: d.day, title: d.title_es, description: d.desc_es })),
       image_urls: form.image_urls,
     };
 
@@ -630,60 +611,6 @@ export default function AdminTours() {
                   onChange={(v) => setF({ excludes_es: v })} />
               </div>
             </div>
-          </div>
-        );
-
-      case 'itinerary':
-        return (
-          <div className="space-y-5">
-            {sectionTitle('Itinerario por día', 'Describe las actividades de cada día')}
-            {form.itinerary.map((day, idx) => (
-              <div key={idx} className="border border-gray-200 rounded-2xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
-                  <span className="text-sm font-black text-gray-800">Día {day.day}</span>
-                  {form.itinerary.length > 1 && (
-                    <button type="button"
-                      onClick={() => setF({
-                        itinerary: form.itinerary.filter((_, i) => i !== idx).map((d, i) => ({ ...d, day: i + 1 })),
-                      })}
-                      className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-                <div className="p-4 grid grid-cols-1 gap-4">
-                  <div>
-                    <label className={labelCls}>Título</label>
-                    <input value={day.title_es}
-                      onChange={(e) => {
-                        const next = [...form.itinerary]; next[idx] = { ...next[idx], title_es: e.target.value };
-                        setF({ itinerary: next });
-                      }}
-                      placeholder="Ej: Llegada y bienvenida" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Descripción</label>
-                    <RichTextEditor value={day.desc_es}
-                      onChange={(html) => {
-                        const next = [...form.itinerary]; next[idx] = { ...next[idx], desc_es: html };
-                        setF({ itinerary: next });
-                      }} />
-                  </div>
-                </div>
-              </div>
-            ))}
-            <button type="button"
-              onClick={() => setF({
-                itinerary: [
-                  ...form.itinerary,
-                  { day: form.itinerary.length + 1, title_es: '', desc_es: '' },
-                ],
-              })}
-              className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-[#E8670A]/40 text-[#E8670A] text-sm font-semibold rounded-xl hover:border-[#E8670A] hover:bg-[#E8670A]/5 transition-all w-full justify-center"
-            >
-              <Plus size={16} /> Agregar día
-            </button>
           </div>
         );
 
