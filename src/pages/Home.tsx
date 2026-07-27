@@ -37,12 +37,13 @@ export default function Home() {
 
   useEffect(() => {
     const loadData = async () => {
+      const today = new Date().toISOString().slice(0, 10);
       const [toursRes, reviewsRes, catsRes] = await Promise.all([
         supabase.from('tours').select('*').eq('is_active', true).eq('is_featured', true).limit(6),
         supabase.from('reviews').select('*').eq('is_approved', true).limit(6),
         supabase.from('categories').select('*').order('name_es').limit(8),
       ]);
-      if (toursRes.data) setFeaturedTours(toursRes.data);
+      if (toursRes.data) setFeaturedTours(toursRes.data.filter((t) => (t.departure_dates ?? []).some((d) => d >= today)));
       if (reviewsRes.data) setReviews(reviewsRes.data);
       if (catsRes.data) setCategories(catsRes.data);
       setLoading(false);

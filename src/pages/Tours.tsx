@@ -86,6 +86,11 @@ export default function Tours() {
     setFiltered(result);
   }, [filters, tours]);
 
+  const today = new Date().toISOString().slice(0, 10);
+  const hasUpcomingDate = (t: Tour) => (t.departure_dates ?? []).some((d) => d >= today);
+  const upcomingTours = filtered.filter(hasUpcomingDate);
+  const pastTours = filtered.filter((t) => !hasUpcomingDate(t));
+
   const updateFilter = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
     if (key === 'category') {
@@ -262,9 +267,28 @@ export default function Tours() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((tour) => <TourCard key={tour.id} tour={tour} />)}
-          </div>
+          <>
+            {upcomingTours.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {upcomingTours.map((tour) => <TourCard key={tour.id} tour={tour} />)}
+              </div>
+            )}
+
+            {pastTours.length > 0 && (
+              <div className="mt-12">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="h-px flex-1 bg-gray-200" />
+                  <h2 className="text-lg font-bold text-gray-400 uppercase tracking-wider">
+                    {lang === 'en' ? 'Past Tours' : 'Tours Pasados'}
+                  </h2>
+                  <div className="h-px flex-1 bg-gray-200" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-60">
+                  {pastTours.map((tour) => <TourCard key={tour.id} tour={tour} />)}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -103,6 +103,7 @@ const es = {
       viewDetail: 'Ver detalle',
       perPerson: 'por persona',
       spots: 'lugares',
+      past: 'Pasado',
     },
     noResults: 'No encontramos tours con esos filtros. Intenta con otros criterios.',
     loading: 'Cargando tours...',

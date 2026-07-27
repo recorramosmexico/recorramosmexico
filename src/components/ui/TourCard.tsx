@@ -13,6 +13,8 @@ export default function TourCard({ tour }: TourCardProps) {
   const title = lang === 'en' ? tour.title_en : tour.title_es;
   const firstImage = tour.image_urls?.[0] || `https://picsum.photos/seed/${tour.slug}/800/600`;
   const nextDate = tour.departure_dates?.[0];
+  const today = new Date().toISOString().slice(0, 10);
+  const isPast = (tour.departure_dates ?? []).every((d) => d < today);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -40,9 +42,14 @@ export default function TourCard({ tour }: TourCardProps) {
             backgroundSize: 'cover',
           }}
         />
-        {tour.is_featured && (
+        {tour.is_featured && !isPast && (
           <span className="absolute top-3 left-3 bg-[#E8670A] text-white text-xs font-semibold px-2.5 py-1 rounded-full">
             Destacado
+          </span>
+        )}
+        {isPast && (
+          <span className="absolute top-3 left-3 bg-gray-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+            {t('tours.card.past')}
           </span>
         )}
         <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent" />

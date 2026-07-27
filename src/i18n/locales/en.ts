@@ -103,6 +103,7 @@ const en = {
       viewDetail: 'View detail',
       perPerson: 'per person',
       spots: 'spots',
+      past: 'Past',
     },
     noResults: 'No tours found with those filters. Try other criteria.',
     loading: 'Loading tours...',
