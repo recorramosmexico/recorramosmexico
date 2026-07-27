@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Plus, CreditCard as Edit, Trash2, Eye, EyeOff, Upload, Loader2, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { BlogPost } from '../../types';
+import RichTextEditor from '../../components/ui/RichTextEditor';
 
 export default function AdminBlog() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -165,8 +166,8 @@ export default function AdminBlog() {
                 <textarea rows={3} value={form.summary_es} onChange={(e) => setForm((p) => ({ ...p, summary_es: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30" />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Contenido (HTML)</label>
-                <textarea rows={6} value={form.content_es} onChange={(e) => setForm((p) => ({ ...p, content_es: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 font-mono" />
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Contenido</label>
+                <RichTextEditor value={form.content_es} onChange={(html) => setForm((p) => ({ ...p, content_es: html }))} />
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="is_published" checked={form.is_published} onChange={(e) => setForm((p) => ({ ...p, is_published: e.target.checked }))} className="w-4 h-4 accent-[#E8670A]" />
