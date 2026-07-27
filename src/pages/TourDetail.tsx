@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import {
   MapPin, Clock, Users, Calendar, Check, X as XIcon,
-  ChevronDown, ChevronUp, Phone, Mail, User, MessageSquare,
+  Phone, Mail, User, MessageSquare,
   ArrowLeft, Share2, LogIn, CheckCircle, CreditCard, Banknote, Building2,
   Upload,
 } from 'lucide-react';
@@ -54,7 +54,7 @@ export default function TourDetail() {
   const [relatedTours, setRelatedTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
-  const [openItinerary, setOpenItinerary] = useState<number | null>(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
@@ -348,7 +348,6 @@ export default function TourDetail() {
 
   const title = lang === 'en' ? tour.title_en : tour.title_es;
   const description = lang === 'en' ? tour.description_en : tour.description_es;
-  const itinerary = lang === 'en' ? tour.itinerary_en : tour.itinerary_es;
   const includes = lang === 'en' ? tour.includes_en : tour.includes_es;
   const excludes = lang === 'en' ? tour.excludes_en : tour.excludes_es;
 
@@ -447,34 +446,6 @@ export default function TourDetail() {
                     </li>
                   ))}
                 </ul>
-              </div>
-            </div>
-
-            {/* Itinerary */}
-            <div>
-              <h2 className="text-2xl font-black text-gray-900 mb-4">{t('tourDetail.itinerary')}</h2>
-              <div className="space-y-3">
-                {(itinerary || []).map((day, i) => (
-                  <div key={i} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                    <button
-                      onClick={() => setOpenItinerary(openItinerary === i ? null : i)}
-                      className="w-full flex items-center justify-between p-5 text-left hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="w-8 h-8 bg-[#E8670A] text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
-                          {day.day}
-                        </span>
-                        <span className="font-semibold text-gray-800">{day.title}</span>
-                      </div>
-                      {openItinerary === i ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
-                    </button>
-                    {openItinerary === i && (
-                      <div className="px-5 pb-5 ml-11">
-                        <div className="text-gray-600 text-sm leading-relaxed prose prose-sm max-w-none prose-headings:font-bold prose-headings:text-gray-900 prose-a:text-[#E8670A] prose-strong:text-gray-800 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5" dangerouslySetInnerHTML={{ __html: cleanHtml(day.description) }} />
-                      </div>
-                    )}
-                  </div>
-                ))}
               </div>
             </div>
 
