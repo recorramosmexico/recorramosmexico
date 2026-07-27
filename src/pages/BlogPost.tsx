@@ -41,18 +41,6 @@ export default function BlogPost() {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
-        <div className="flex gap-1.5">
-          {[0, 1, 2].map((i) => (
-            <span key={i} className="w-3 h-3 bg-[#E8670A] rounded-full animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   const title = post ? (lang === 'en' ? post.title_en : post.title_es) ?? '' : '';
   const summary = post ? (lang === 'en' ? post.summary_en : post.summary_es) ?? '' : '';
   const content = post ? (lang === 'en' ? post.content_en : post.content_es) ?? '' : '';
@@ -75,6 +63,18 @@ export default function BlogPost() {
         ]
       : undefined,
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center">
+        <div className="flex gap-1.5">
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="w-3 h-3 bg-[#E8670A] rounded-full animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (!post) {
     return (
