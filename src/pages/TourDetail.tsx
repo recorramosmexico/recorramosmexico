@@ -254,9 +254,14 @@ export default function TourDetail() {
   const handleWhatsAppBook = () => {
     if (!tour) return;
     const title = lang === 'en' ? tour.title_en : tour.title_es;
-    const msg = user
-      ? `¡Hola! Me interesa reservar el tour: *${title}*\nFecha: ${selectedDate || 'Por confirmar'}\nViajeros: ${travelers}\nPrecio estimado: $${(tour.price_mxn * travelers).toLocaleString('es-MX')} MXN`
-      : `¡Hola! Me interesa reservar el tour: *${title}*`;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const hasFuture = (tour.departure_dates ?? []).some((d) => d >= todayStr);
+    const lastDate = (tour.departure_dates ?? []).slice().sort().pop() || '';
+    const msg = !hasFuture
+      ? `¡Hola! Me interesa saber si próximamente habrá nuevas fechas de este tour que ya pasó: *${title}*\nFecha: ${lastDate}`
+      : user
+        ? `¡Hola! Me interesa reservar el tour: *${title}*\nFecha: ${selectedDate || 'Por confirmar'}\nViajeros: ${travelers}\nPrecio estimado: ${(tour.price_mxn * travelers).toLocaleString('es-MX')} MXN`
+        : `¡Hola! Me interesa reservar el tour: *${title}*`;
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
