@@ -391,7 +391,7 @@ export default function TourDetail() {
                 </span>
               </div>
               <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-4">{title}</h1>
-              <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">{description}</p>
+              <div className="text-gray-600 leading-relaxed prose prose-lg max-w-none prose-headings:font-black prose-headings:text-gray-900 prose-a:text-[#E8670A] prose-strong:text-gray-800 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5" dangerouslySetInnerHTML={{ __html: description }} />
             </div>
 
             {/* Includes / Excludes */}
@@ -444,7 +444,7 @@ export default function TourDetail() {
                     </button>
                     {openItinerary === i && (
                       <div className="px-5 pb-5 ml-11">
-                        <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">{day.description}</p>
+                        <div className="text-gray-600 text-sm leading-relaxed prose prose-sm max-w-none prose-headings:font-bold prose-headings:text-gray-900 prose-a:text-[#E8670A] prose-strong:text-gray-800 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5" dangerouslySetInnerHTML={{ __html: day.description }} />
                       </div>
                     )}
                   </div>

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Category, ItineraryDay, Tour } from '../../types';
+import RichTextEditor from '../../components/ui/RichTextEditor';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -434,10 +435,8 @@ export default function AdminTours() {
             {sectionTitle('Contenido del Tour', 'Descripción del tour')}
             <div>
               <label className={labelCls}>Descripción</label>
-              <textarea rows={5} value={form.description_es}
-                onChange={(e) => setF({ description_es: e.target.value })}
-                placeholder="Describe la experiencia del tour..."
-                className={`${inputCls} resize-none`} />
+              <RichTextEditor value={form.description_es}
+                onChange={(html) => setF({ description_es: html })} />
             </div>
           </div>
         );
@@ -624,12 +623,11 @@ export default function AdminTours() {
                   </div>
                   <div>
                     <label className={labelCls}>Descripción</label>
-                    <textarea rows={3} value={day.desc_es}
-                      onChange={(e) => {
-                        const next = [...form.itinerary]; next[idx] = { ...next[idx], desc_es: e.target.value };
+                    <RichTextEditor value={day.desc_es}
+                      onChange={(html) => {
+                        const next = [...form.itinerary]; next[idx] = { ...next[idx], desc_es: html };
                         setF({ itinerary: next });
-                      }}
-                      className={`${inputCls} resize-none`} />
+                      }} />
                   </div>
                 </div>
               </div>
