@@ -18,6 +18,30 @@ import { tourSchema, breadcrumbSchema } from '../lib/structuredData';
 
 const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '525623872050';
 
+function cleanHtml(raw: string): string {
+  if (!raw) return '';
+  const doc = new DOMParser().parseFromString(raw, 'text/html');
+  doc.querySelectorAll('[class],[style]').forEach((el) => {
+    el.removeAttribute('class');
+    el.removeAttribute('style');
+  });
+  // Replace FB emoji images with their alt text
+  doc.querySelectorAll('img').forEach((img) => {
+    img.replaceWith(img.alt || '');
+  });
+  // Unwrap meaningless spans/divs that only wrap inline text
+  doc.querySelectorAll('span').forEach((span) => {
+    span.replaceWith(...Array.from(span.childNodes));
+  });
+  // Convert div wrappers to paragraphs
+  doc.querySelectorAll('div').forEach((div) => {
+    const p = doc.createElement('p');
+    p.append(...Array.from(div.childNodes));
+    div.replaceWith(p);
+  });
+  return doc.body.innerHTML;
+}
+
 export default function TourDetail() {
   const { slug } = useParams<{ slug: string }>();
   const { t, i18n } = useTranslation();
@@ -391,7 +415,7 @@ export default function TourDetail() {
                 </span>
               </div>
               <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-4">{title}</h1>
-              <div className="text-gray-600 leading-relaxed prose prose-lg max-w-none prose-headings:font-black prose-headings:text-gray-900 prose-a:text-[#E8670A] prose-strong:text-gray-800 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5" dangerouslySetInnerHTML={{ __html: description }} />
+              <div className="text-gray-600 leading-relaxed prose prose-lg max-w-none prose-headings:font-black prose-headings:text-gray-900 prose-a:text-[#E8670A] prose-strong:text-gray-800 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5" dangerouslySetInnerHTML={{ __html: cleanHtml(description) }} />
             </div>
 
             {/* Includes / Excludes */}
@@ -444,7 +468,7 @@ export default function TourDetail() {
                     </button>
                     {openItinerary === i && (
                       <div className="px-5 pb-5 ml-11">
-                        <div className="text-gray-600 text-sm leading-relaxed prose prose-sm max-w-none prose-headings:font-bold prose-headings:text-gray-900 prose-a:text-[#E8670A] prose-strong:text-gray-800 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5" dangerouslySetInnerHTML={{ __html: day.description }} />
+                        <div className="text-gray-600 text-sm leading-relaxed prose prose-sm max-w-none prose-headings:font-bold prose-headings:text-gray-900 prose-a:text-[#E8670A] prose-strong:text-gray-800 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5" dangerouslySetInnerHTML={{ __html: cleanHtml(day.description) }} />
                       </div>
                     )}
                   </div>
