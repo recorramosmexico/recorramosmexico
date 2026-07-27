@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Plus, CreditCard as Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Plus, CreditCard as Edit, Trash2, Eye, EyeOff, Upload, Loader2, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { BlogPost } from '../../types';
 
@@ -8,10 +8,44 @@ export default function AdminBlog() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<BlogPost | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     title_es: '', title_en: '', slug: '', summary_es: '', summary_en: '',
     content_es: '', content_en: '', cover_image: '', category: 'destinos', is_published: false,
   });
+
+  const handleImageUpload = async (file: File) => {
+    setUploadError('');
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Solo se permiten imágenes.');
+      return;
+    }
+    if (file.size > 10485760) {
+      setUploadError('La imagen supera los 10MB.');
+      return;
+    }
+    setUploading(true);
+    const ext = file.name.split('.').pop();
+    const name = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`;
+    const { data, error } = await supabase.storage.from('blog-images').upload(name, file, { contentType: file.type });
+    setUploading(false);
+    if (error) {
+      setUploadError(error.message);
+      return;
+    }
+    if (data) {
+      const { data: { publicUrl } } = supabase.storage.from('blog-images').getPublicUrl(data.path);
+      setForm((p) => ({ ...p, cover_image: publicUrl }));
+    }
+  };
+
+  const handleImageDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleImageUpload(file);
+  };
 
   const load = async () => {
     const { data } = await supabase.from('blog_posts').select('*').order('created_at', { ascending: false });
@@ -99,8 +133,30 @@ export default function AdminBlog() {
                 </select>
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">URL imagen de portada</label>
-                <input value={form.cover_image} onChange={(e) => setForm((p) => ({ ...p, cover_image: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30" />
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Imagen de portada</label>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ''; }} />
+                {form.cover_image ? (
+                  <div className="relative rounded-xl overflow-hidden border border-gray-200 group">
+                    <img src={form.cover_image} alt="Portada" className="w-full h-44 object-cover" />
+                    <button type="button" onClick={() => setForm((p) => ({ ...p, cover_image: '' }))} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-lg hover:bg-black/80 transition-colors">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDrop={handleImageDrop}
+                    onDragOver={(e) => e.preventDefault()}
+                    className="flex flex-col items-center justify-center gap-2 h-44 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#E8670A] hover:bg-[#E8670A]/5 transition-colors"
+                  >
+                    {uploading ? (
+                      <><Loader2 size={22} className="text-[#E8670A] animate-spin" /><span className="text-sm text-gray-500">Subiendo...</span></>
+                    ) : (
+                      <><Upload size={22} className="text-gray-400" /><span className="text-sm text-gray-500">Haz clic o arrastra una imagen aquí</span><span className="text-xs text-gray-400">JPG, PNG, WebP — máx 10MB</span></>
+                    )}
+                  </div>
+                )}
+                {uploadError && <p className="text-xs text-red-500 mt-1.5">{uploadError}</p>}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5">Resumen en español</label>
