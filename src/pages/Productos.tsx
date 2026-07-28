@@ -155,15 +155,41 @@ export default function Productos() {
                   </div>
                   <div className="p-5">
                     <p className="text-xs text-[#E8670A] font-semibold uppercase tracking-wider mb-1">{product.category}</p>
-                    <h3 className="font-bold text-gray-900 text-base leading-tight mb-2 group-hover:text-[#E8670A] transition-colors">
+                    <h3 className="font-bold text-gray-900 text-base leading-tight mb-3 group-hover:text-[#E8670A] transition-colors">
                       {title}
                     </h3>
+
+                    {/* Stock por talla o total */}
+                    {product.sizes && product.sizes.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {product.sizes.map((s) => (
+                          <span
+                            key={s.size}
+                            className={`text-xs font-semibold px-2 py-0.5 rounded-md border ${
+                              s.stock > 0
+                                ? 'bg-gray-50 border-gray-200 text-gray-700'
+                                : 'bg-gray-100 border-gray-200 text-gray-400 line-through'
+                            }`}
+                          >
+                            {s.size}
+                            {s.stock > 0 && s.stock <= 5 && (
+                              <span className="ml-1 text-amber-500">·{s.stock}</span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    ) : totalStock > 0 ? (
+                      <p className="text-xs text-gray-500 mb-3">
+                        {lang === 'en' ? `${totalStock} available` : `${totalStock} disponibles`}
+                      </p>
+                    ) : null}
+
                     <p className="text-xl font-black text-gray-900">
                       ${product.price_mxn.toLocaleString(lang === 'en' ? 'en-US' : 'es-MX')} <span className="text-sm font-normal text-gray-500">MXN</span>
                     </p>
                     {product.shipping_cost_mxn > 0 && (
                       <p className="text-xs text-gray-400 mt-1">
-                        {lang === 'en' ? `Shipping from $${product.shipping_cost_mxn.toLocaleString('es-MX')} MXN` : `Envío desde $${product.shipping_cost_mxn.toLocaleString('es-MX')} MXN`}
+                        {lang === 'en' ? `Shipping from ${product.shipping_cost_mxn.toLocaleString('es-MX')} MXN` : `Envío desde ${product.shipping_cost_mxn.toLocaleString('es-MX')} MXN`}
                       </p>
                     )}
                   </div>
