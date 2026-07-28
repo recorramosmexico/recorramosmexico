@@ -71,7 +71,7 @@ interface Props {
 
 export default function RichTextEditor({ value, onChange }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const lastValueRef = useRef(value);
+  const lastValueRef = useRef('');
   const isComposingRef = useRef(false);
 
   useEffect(() => {
@@ -180,3 +180,6 @@ export default function RichTextEditor({ value, onChange }: Props) {
     </div>
   );
 }
+
+
+export default RichTextEditor
