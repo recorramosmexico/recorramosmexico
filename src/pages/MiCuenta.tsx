@@ -30,6 +30,8 @@ interface Reservation {
   notes: string;
   confirmation_token: string | null;
   payment_proof_url: string | null;
+  stripe_session_id: string | null;
+  balance_stripe_session_id: string | null;
   tours: { title_es: string; title_en: string; destination: string; image_urls: string[] } | null;
 }
 
@@ -90,6 +92,8 @@ export default function MiCuenta() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [proofUploadingId, setProofUploadingId] = useState<string | null>(null);
   const [proofError, setProofError] = useState<string | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
     pending:      { label: lang === 'en' ? 'Pending'        : 'Pendiente',       color: 'bg-yellow-100 text-yellow-800' },
@@ -296,6 +300,38 @@ export default function MiCuenta() {
       setProofError(msg);
     } finally {
       setProofUploadingId(null);
+    }
+  };
+
+  const handleSyncPayment = async (res: Reservation) => {
+    setSyncError(null);
+    setSyncingId(res.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(lang === 'en' ? 'Session expired.' : 'Sesión expirada.');
+      const res2 = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-payment`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ reservation_id: res.id }),
+        },
+      );
+      const result = await res2.json();
+      if (!res2.ok) throw new Error(result.error || 'Sync failed');
+      if (result.changed) {
+        await fetchReservations(true);
+      } else {
+        setSyncError(lang === 'en' ? 'Payment not yet confirmed by Stripe.' : 'Stripe aún no confirma el pago.');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSyncError(msg);
+    } finally {
+      setSyncingId(null);
     }
   };
 
@@ -645,6 +681,25 @@ export default function MiCuenta() {
                                     <p className="text-xs text-red-600 mt-2">{proofError}</p>
                                   )}
                                 </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* ── Sync payment button (webhook fallback) ── */}
+                          {res.payment_status === 'pending' && (res.stripe_session_id || res.balance_stripe_session_id) && !isClientExpired && (
+                            <div className="mt-3">
+                              <button
+                                onClick={() => handleSyncPayment(res)}
+                                disabled={syncingId === res.id}
+                                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                <RefreshCw size={13} className={syncingId === res.id ? 'animate-spin' : ''} />
+                                {syncingId === res.id
+                                  ? (lang === 'en' ? 'Syncing…' : 'Sincronizando…')
+                                  : (lang === 'en' ? 'Sync payment status' : 'Sincronizar estado de pago')}
+                              </button>
+                              {syncError && syncingId === null && (
+                                <p className="text-xs text-red-600 mt-1.5">{syncError}</p>
                               )}
                             </div>
                           )}

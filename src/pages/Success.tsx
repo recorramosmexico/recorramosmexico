@@ -14,10 +14,12 @@ interface OrderInfo {
 export default function Success() {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
+  const reservationId = searchParams.get('reservation_id');
 
   const [order, setOrder] = useState<OrderInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [syncedReservation, setSyncedReservation] = useState(false);
 
   useEffect(() => {
     if (!sessionId) {
@@ -27,6 +29,7 @@ export default function Success() {
 
     const fetchOrder = async () => {
       // Poll up to ~10 s for the webhook to write the order
+      let found = false;
       for (let attempt = 0; attempt < 5; attempt++) {
         if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
 
@@ -38,17 +41,45 @@ export default function Success() {
 
         if (!error && data) {
           setOrder(data as OrderInfo);
-          setLoading(false);
-          return;
+          found = true;
+          break;
         }
       }
 
-      setNotFound(true);
+      // Fallback: if the webhook didn't fire, call sync-payment to update the reservation
+      if (reservationId) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            const res = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-payment`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ reservation_id: reservationId }),
+              },
+            );
+            if (res.ok) {
+              const result = await res.json();
+              if (result.changed) {
+                setSyncedReservation(true);
+              }
+            }
+          }
+        } catch {
+          // silent — not critical if sync fails here
+        }
+      }
+
+      if (!found) setNotFound(true);
       setLoading(false);
     };
 
     fetchOrder();
-  }, [sessionId]);
+  }, [sessionId, reservationId]);
 
   const formatCurrency = (cents: number, currency: string) =>
     new Intl.NumberFormat('es-MX', {
@@ -78,6 +109,15 @@ export default function Success() {
 
             {/* Body */}
             <div className="px-8 py-7 space-y-5">
+              {syncedReservation && (
+                <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <CheckCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-blue-700">
+                    Hemos confirmado tu pago y actualizado el estado de tu reservación.
+                  </p>
+                </div>
+              )}
+
               {order ? (
                 <div className="bg-gray-50 rounded-xl p-5 space-y-3">
                   <div className="flex justify-between text-sm">

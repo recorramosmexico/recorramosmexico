@@ -29,7 +29,6 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
   try {
-    // Verify the caller is an authenticated admin
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return json({ error: 'Authorization required' }, 401);
 
@@ -37,13 +36,14 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return json({ error: 'Unauthorized' }, 401);
 
+    // Check if admin
     const { data: profile } = await supabase
       .from('profiles')
       .select('is_admin')
       .eq('id', user.id)
       .maybeSingle();
 
-    if (!profile?.is_admin) return json({ error: 'Admin only' }, 403);
+    const isAdmin = profile?.is_admin === true;
 
     const { reservation_id } = await req.json();
     if (!reservation_id) return json({ error: 'reservation_id required' }, 400);
@@ -51,11 +51,16 @@ Deno.serve(async (req) => {
     // Fetch reservation
     const { data: reservation, error: resError } = await supabase
       .from('reservations')
-      .select('id, payment_status, stripe_session_id, balance_stripe_session_id, deposit_amount_mxn')
+      .select('id, payment_status, stripe_session_id, balance_stripe_session_id, deposit_amount_mxn, email')
       .eq('id', reservation_id)
       .maybeSingle();
 
     if (resError || !reservation) return json({ error: 'Reservation not found' }, 404);
+
+    // Non-admins can only sync their own reservations
+    if (!isAdmin && reservation.email !== user.email) {
+      return json({ error: 'You can only sync your own reservation' }, 403);
+    }
 
     if (reservation.payment_status === 'paid') {
       return json({ status: 'paid', message: 'Already fully paid', changed: false });
