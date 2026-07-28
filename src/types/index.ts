@@ -107,20 +107,26 @@ export interface BookingFormData {
   notes: string;
 }
 
+export function getMexicoCityDate(): Date {
+  const now = new Date();
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+  return new Date(utcMs - 6 * 3600000);
+}
+
+export function getMexicoCityDateString(): string {
+  return getMexicoCityDate().toISOString().slice(0, 10);
+}
+
 export function getEffectivePrice(tour: Pick<Tour, 'price_mxn' | 'presale_price_mxn' | 'presale_end_date'>): number {
   if (tour.presale_price_mxn != null && tour.presale_end_date) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const end = new Date(tour.presale_end_date + 'T00:00:00');
-    if (today <= end) return tour.presale_price_mxn;
+    const today = getMexicoCityDateString();
+    if (today <= tour.presale_end_date) return tour.presale_price_mxn;
   }
   return tour.price_mxn;
 }
 
 export function isPresaleActive(tour: Pick<Tour, 'presale_price_mxn' | 'presale_end_date'>): boolean {
   if (tour.presale_price_mxn == null || !tour.presale_end_date) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const end = new Date(tour.presale_end_date + 'T00:00:00');
-  return today <= end;
+  const today = getMexicoCityDateString();
+  return today <= tour.presale_end_date;
 }

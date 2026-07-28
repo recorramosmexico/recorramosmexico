@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Map, ClipboardList, DollarSign, Calendar, TrendingUp, ChevronRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Reservation } from '../../types';
+import { getMexicoCityDate } from '../../types';
 
 interface Stats {
   totalTours: number;
@@ -24,7 +25,8 @@ export default function AdminDashboard() {
       ]);
 
       const reservations = reservationsRes.data || [];
-      const today = new Date();
+      const today = getMexicoCityDate();
+      today.setHours(0, 0, 0, 0);
       const weekEnd = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 
       const weekDepartures = reservations.filter((r) => {

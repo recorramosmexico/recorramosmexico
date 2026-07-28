@@ -3,6 +3,7 @@ import { Download, Filter, Trash2, AlertTriangle, Send, Users, CheckCircle, Refr
 import { supabase } from '../../lib/supabase';
 import { sendEmail } from '../../lib/email';
 import type { Reservation, Tour } from '../../types';
+import { getMexicoCityDateString } from '../../types';
 
 type StatusFilter = 'all' | 'pending' | 'deposit_paid' | 'paid' | 'refunded' | 'cancelled';
 
@@ -22,7 +23,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled:    'bg-red-100 text-red-700',
 };
 
-const today = new Date().toISOString().split('T')[0];
+const today = getMexicoCityDateString();
 
 export default function AdminReservaciones() {
   const [reservations, setReservations] = useState<Reservation[]>([]);

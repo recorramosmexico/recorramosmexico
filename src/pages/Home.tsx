@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Mountain, Music, Waves, Star, Globe, Bus, Compass, Ticket, ChevronRight, Quote } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Category, Tour, Review } from '../types';
+import { getMexicoCityDateString } from '../types';
 import TourCard from '../components/ui/TourCard';
 import StarRating from '../components/ui/StarRating';
 import { useSEO } from '../hooks/useSEO';
@@ -37,7 +38,7 @@ export default function Home() {
 
   useEffect(() => {
     const loadData = async () => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = getMexicoCityDateString();
       const [toursRes, reviewsRes, catsRes] = await Promise.all([
         supabase.from('tours').select('*').eq('is_active', true).eq('is_featured', true).limit(6),
         supabase.from('reviews').select('*').eq('is_approved', true).limit(6),

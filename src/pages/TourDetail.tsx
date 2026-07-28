@@ -12,7 +12,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { sendEmail } from '../lib/email';
 import type { Tour, BookingFormData } from '../types';
-import { getEffectivePrice, isPresaleActive } from '../types';
+import { getEffectivePrice, isPresaleActive, getMexicoCityDateString } from '../types';
 import TourCard from '../components/ui/TourCard';
 import { useSEO } from '../hooks/useSEO';
 import { tourSchema, breadcrumbSchema } from '../lib/structuredData';
@@ -280,7 +280,7 @@ export default function TourDetail() {
   const handleWhatsAppBook = () => {
     if (!tour) return;
     const title = lang === 'en' ? tour.title_en : tour.title_es;
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getMexicoCityDateString();
     const hasFuture = (tour.departure_dates ?? []).some((d) => d >= todayStr);
     const lastDate = (tour.departure_dates ?? []).slice().sort().pop() || '';
     const msg = !hasFuture
@@ -342,7 +342,7 @@ export default function TourDetail() {
     );
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getMexicoCityDateString();
   const futureDates = (tour.departure_dates ?? []).filter((d) => d >= today);
   const isPastTour = futureDates.length === 0;
 

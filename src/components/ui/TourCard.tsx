@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MapPin, Clock, Users, Calendar } from 'lucide-react';
 import type { Tour } from '../../types';
-import { getEffectivePrice, isPresaleActive } from '../../types';
+import { getEffectivePrice, isPresaleActive, getMexicoCityDateString } from '../../types';
 
 interface TourCardProps {
   tour: Tour;
@@ -14,7 +14,7 @@ export default function TourCard({ tour }: TourCardProps) {
   const title = lang === 'en' ? tour.title_en : tour.title_es;
   const firstImage = tour.image_urls?.[0] || `https://picsum.photos/seed/${tour.slug}/800/600`;
   const nextDate = tour.departure_dates?.[0];
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getMexicoCityDateString();
   const isPast = (tour.departure_dates ?? []).every((d) => d < today);
 
   const formatDate = (dateStr: string) => {

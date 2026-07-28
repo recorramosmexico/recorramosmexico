@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Search, SlidersHorizontal, X, Tag } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Category, Tour } from '../types';
+import { getMexicoCityDateString } from '../types';
 import TourCard from '../components/ui/TourCard';
 import { useSEO } from '../hooks/useSEO';
 import { websiteSchema } from '../lib/structuredData';
@@ -86,7 +87,7 @@ export default function Tours() {
     setFiltered(result);
   }, [filters, tours]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getMexicoCityDateString();
   const hasUpcomingDate = (t: Tour) => (t.departure_dates ?? []).some((d) => d >= today);
   const upcomingTours = filtered.filter(hasUpcomingDate);
   const pastTours = filtered.filter((t) => !hasUpcomingDate(t));
