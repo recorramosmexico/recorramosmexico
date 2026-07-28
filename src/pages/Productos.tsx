@@ -62,8 +62,8 @@ export default function Productos() {
           </h1>
           <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto">
             {lang === 'en'
-              ? 'Take a piece of Recorramos México with you. Caps, t-shirts, towels and more with our official brand.'
-              : 'Lleva un pedazo de Recorramos México contigo. Gorras, camisetas, toallas y más con nuestra marca oficial.'}
+              ? 'Take a piece of Recorramos México with you: caps, t-shirts, towels and more with our official brand.'
+              : 'Lleva un pedazo de Recorramos México contigo: gorras, camisetas, toallas y más con nuestra marca oficial.'}
           </p>
         </div>
       </div>
