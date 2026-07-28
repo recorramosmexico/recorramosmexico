@@ -48,6 +48,7 @@ export default function AuthCallback() {
               id: user.id,
               full_name: existing?.full_name || fullName || null,
               phone: existing?.phone || phone || null,
+              email: user.email || null,
             })
 
             if (!user.last_sign_in_at && user.email) {

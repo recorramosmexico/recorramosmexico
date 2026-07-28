@@ -219,6 +219,7 @@ export default function MiCuenta() {
         phone: profile.phone,
         birth_date: profile.birth_date || null,
         sex: profile.sex || null,
+        email: user.email || null,
       });
 
     setSavingProfile(false);
