@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard, Map, ClipboardList, BookOpen, Star,
-  LogOut, Menu, X, ChevronRight, Tag, Settings, MessageSquare, Megaphone, Users
+  LogOut, Menu, X, ChevronRight, Tag, Settings, MessageSquare, Megaphone, Users,
+  ShoppingBag, Package,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -14,6 +15,8 @@ const NAV_ITEMS = [
   { path: '/admin/inquiries', icon: <MessageSquare size={20} />, label: 'Cotizaciones' },
   { path: '/admin/comunicados', icon: <Megaphone size={20} />, label: 'Comunicados' },
   { path: '/admin/viajeros', icon: <Users size={20} />, label: 'Viajeros' },
+  { path: '/admin/productos', icon: <ShoppingBag size={20} />, label: 'Productos' },
+  { path: '/admin/pedidos', icon: <Package size={20} />, label: 'Pedidos Productos' },
   { path: '/admin/blog', icon: <BookOpen size={20} />, label: 'Blog' },
   { path: '/admin/resenas', icon: <Star size={20} />, label: 'Reseñas' },
   { path: '/admin/configuracion', icon: <Settings size={20} />, label: 'Configuración' },
@@ -48,7 +51,7 @@ export default function AdminLayout() {
           </Link>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.path}

@@ -45,8 +45,41 @@ Deno.serve(async (req) => {
 
     const isAdmin = profile?.is_admin === true;
 
-    const { reservation_id } = await req.json();
-    if (!reservation_id) return json({ error: 'reservation_id required' }, 400);
+    const { reservation_id, order_id, order_type } = await req.json();
+    if (!reservation_id && !order_id) return json({ error: 'reservation_id or order_id required' }, 400);
+
+    // Handle product order sync
+    if (order_type === 'product' && order_id) {
+      const { data: order, error: orderError } = await supabase
+        .from('product_orders')
+        .select('id, payment_status, stripe_session_id, user_id')
+        .eq('id', order_id)
+        .maybeSingle();
+
+      if (orderError || !order) return json({ error: 'Order not found' }, 404);
+
+      if (!isAdmin && order.user_id !== user.id) {
+        return json({ error: 'You can only sync your own order' }, 403);
+      }
+
+      if (order.payment_status === 'paid') {
+        return json({ status: 'paid', message: 'Already paid', changed: false });
+      }
+
+      const sessionId = order.stripe_session_id;
+      if (!sessionId) return json({ error: 'No Stripe session ID on this order' }, 400);
+
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      if (session.payment_status === 'paid') {
+        const { data: orderNum } = await supabase.rpc('generate_order_number');
+        await supabase
+          .from('product_orders')
+          .update({ payment_status: 'paid', order_number: orderNum })
+          .eq('id', order_id);
+        return json({ status: 'paid', message: 'Order updated to paid', changed: true });
+      }
+      return json({ status: session.payment_status, message: `Stripe reports: ${session.payment_status}`, changed: false });
+    }
 
     // Fetch reservation
     const { data: reservation, error: resError } = await supabase

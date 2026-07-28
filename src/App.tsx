@@ -34,6 +34,10 @@ const AdminComunicados = lazy(() => import('./pages/admin/AdminComunicados'));
 const AdminViajeros = lazy(() => import('./pages/admin/AdminViajeros'));
 const AdminCategorias = lazy(() => import('./pages/admin/AdminCategorias'));
 const AdminConfiguracion = lazy(() => import('./pages/admin/AdminConfiguracion'));
+const Productos = lazy(() => import('./pages/Productos'));
+const ProductoDetalle = lazy(() => import('./pages/ProductoDetalle'));
+const AdminProductos = lazy(() => import('./pages/admin/AdminProductos'));
+const AdminPedidos = lazy(() => import('./pages/admin/AdminPedidos'));
 const ConfirmarPago = lazy(() => import('./pages/ConfirmarPago'));
 const Privacidad = lazy(() => import('./pages/Privacidad'));
 const Terminos = lazy(() => import('./pages/Terminos'));
@@ -64,6 +68,8 @@ function AppRoutes() {
           <Route path="/paquetes" element={<Paquetes />} />
           <Route path="/nosotros" element={<Nosotros />} />
           <Route path="/servicios" element={<Servicios />} />
+          <Route path="/productos" element={<Productos />} />
+          <Route path="/productos/:slug" element={<ProductoDetalle />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/contacto" element={<Contacto />} />
@@ -105,6 +111,8 @@ function AppRoutes() {
               <Route path="comunicados" element={<AdminComunicados />} />
               <Route path="viajeros" element={<AdminViajeros />} />
               <Route path="categorias" element={<AdminCategorias />} />
+              <Route path="productos" element={<AdminProductos />} />
+              <Route path="pedidos" element={<AdminPedidos />} />
               <Route path="configuracion" element={<AdminConfiguracion />} />
             </Route>
           </Route>

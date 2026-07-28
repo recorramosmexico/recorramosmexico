@@ -98,6 +98,59 @@ export interface BlogPost {
   created_at: string;
 }
 
+export interface ProductSize {
+  size: string;
+  stock: number;
+}
+
+export interface Product {
+  id: string;
+  title_es: string;
+  title_en: string;
+  slug: string;
+  description_es: string;
+  description_en: string;
+  price_mxn: number;
+  shipping_cost_mxn: number;
+  category: string;
+  sizes: ProductSize[];
+  image_urls: string[];
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ProductOrder {
+  id: string;
+  user_id: string;
+  product_id: string | null;
+  quantity: number;
+  size: string;
+  unit_price_mxn: number;
+  total_mxn: number;
+  shipping_cost_mxn: number;
+  delivery_method: 'shipping' | 'personal_cdmx';
+  shipping_address: {
+    street: string;
+    number: string;
+    neighborhood: string;
+    city: string;
+    zip: string;
+    references: string;
+  } | null;
+  tracking_number: string | null;
+  payment_status: 'pending' | 'paid' | 'cancelled' | 'refunded';
+  payment_method_type: 'card' | 'oxxo' | 'bank_transfer' | null;
+  stripe_session_id: string | null;
+  payment_proof_url: string | null;
+  confirmation_token: string | null;
+  order_number: string | null;
+  refund_status: string | null;
+  refund_method: 'stripe' | 'bank_transfer' | null;
+  refunded_at: string | null;
+  created_at: string;
+  products?: Pick<Product, 'title_es' | 'title_en' | 'image_urls' | 'slug'> | null;
+}
+
 export interface BookingFormData {
   customer_name: string;
   email: string;

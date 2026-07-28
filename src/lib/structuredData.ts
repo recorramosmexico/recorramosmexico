@@ -1,5 +1,5 @@
 import { SITE_DOMAIN, SITE_NAME } from '../hooks/useSEO';
-import type { Tour, BlogPost, Review } from '../types';
+import type { Tour, BlogPost, Review, Product } from '../types';
 
 export function organizationSchema() {
   return {
@@ -53,6 +53,29 @@ export function aggregateRatingSchema(reviews: Review[]) {
     reviewCount: reviews.length,
     bestRating: 5,
     worstRating: 1,
+  };
+}
+
+export function productSchema(product: Product) {
+  const lang = typeof window !== 'undefined' && window.location.pathname.startsWith('/en') ? 'en' : 'es';
+  const name = lang === 'en' ? product.title_en : product.title_es;
+  const description = lang === 'en' ? product.description_en : product.description_es;
+  const totalStock = (product.sizes || []).reduce((sum, s) => sum + (s.stock || 0), 0);
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name,
+    description: description || undefined,
+    image: product.image_urls?.[0] || undefined,
+    sku: product.id,
+    brand: { '@type': 'Brand', name: SITE_NAME },
+    offers: {
+      '@type': 'Offer',
+      url: `${SITE_DOMAIN}/productos/${product.slug}`,
+      priceCurrency: 'MXN',
+      price: product.price_mxn,
+      availability: totalStock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+    },
   };
 }
 

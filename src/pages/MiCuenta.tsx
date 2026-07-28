@@ -5,6 +5,7 @@ import {
   CalendarDays, MapPin, Users, CreditCard, LogOut, Clock, User, Phone,
   Mail, Save, CheckCircle, CreditCard as Edit2, AlertTriangle, Banknote,
   Wallet, ArrowRight, Calendar, RefreshCw, Upload, FileCheck, Loader2, ExternalLink,
+  ShoppingBag, Package, Truck, Ticket,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -35,6 +36,25 @@ interface Reservation {
   tours: { title_es: string; title_en: string; destination: string; image_urls: string[] } | null;
 }
 
+interface ProductOrderRow {
+  id: string;
+  created_at: string;
+  order_number: string | null;
+  quantity: number;
+  size: string;
+  unit_price_mxn: number;
+  total_mxn: number;
+  shipping_cost_mxn: number;
+  delivery_method: 'shipping' | 'personal_cdmx';
+  tracking_number: string | null;
+  payment_status: 'pending' | 'paid' | 'cancelled' | 'refunded';
+  payment_method_type: 'card' | 'oxxo' | 'bank_transfer' | null;
+  stripe_session_id: string | null;
+  payment_proof_url: string | null;
+  confirmation_token: string | null;
+  products: { title_es: string; title_en: string; image_urls: string[]; slug: string } | null;
+}
+
 interface Profile {
   full_name: string;
   phone: string;
@@ -42,7 +62,7 @@ interface Profile {
   sex: string;
 }
 
-type Tab = 'reservations' | 'profile';
+type Tab = 'reservations' | 'purchases' | 'profile';
 type PaymentMethod = 'card' | 'oxxo' | 'bank_transfer';
 
 function hoursElapsed(createdAt: string): number {
@@ -81,6 +101,9 @@ export default function MiCuenta() {
   const [loadingRes, setLoadingRes] = useState(true);
   const [refreshingRes, setRefreshingRes] = useState(false);
 
+  const [productOrders, setProductOrders] = useState<ProductOrderRow[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+
   const [profile, setProfile] = useState<Profile>({ full_name: '', phone: '', birth_date: '', sex: '' });
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -95,6 +118,14 @@ export default function MiCuenta() {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
 
+  // Product order payment states
+  const [productPayExpanded, setProductPayExpanded] = useState<string | null>(null);
+  const [productPayMethod, setProductPayMethod] = useState<PaymentMethod>('card');
+  const [productCheckoutLoading, setProductCheckoutLoading] = useState<string | null>(null);
+  const [productCheckoutError, setProductCheckoutError] = useState<string | null>(null);
+  const [productProofUploading, setProductProofUploading] = useState<string | null>(null);
+  const [productSyncing, setProductSyncing] = useState<string | null>(null);
+
   const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
     pending:      { label: lang === 'en' ? 'Pending'        : 'Pendiente',       color: 'bg-yellow-100 text-yellow-800' },
     deposit_paid: { label: lang === 'en' ? 'Deposit Paid'   : 'Anticipo Pagado', color: 'bg-blue-100 text-blue-800' },
@@ -102,6 +133,13 @@ export default function MiCuenta() {
     refunded:     { label: lang === 'en' ? 'Refunded'       : 'Reembolsado',     color: 'bg-sky-100 text-sky-800' },
     cancelled:    { label: lang === 'en' ? 'Cancelled'      : 'Cancelado',       color: 'bg-red-100 text-red-800' },
     expired:      { label: lang === 'en' ? 'Expired'        : 'Expirado',        color: 'bg-red-100 text-red-800' },
+  };
+
+  const PRODUCT_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+    pending:   { label: lang === 'en' ? 'Pending'   : 'En espera',    color: 'bg-yellow-100 text-yellow-800' },
+    paid:      { label: lang === 'en' ? 'Paid'      : 'Liquidada',    color: 'bg-green-100 text-green-800' },
+    cancelled: { label: lang === 'en' ? 'Cancelled' : 'Cancelada',   color: 'bg-red-100 text-red-800' },
+    refunded:  { label: lang === 'en' ? 'Refunded'  : 'Reembolsada',  color: 'bg-sky-100 text-sky-800' },
   };
 
   const STRIPE_PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: React.ReactNode }[] = [
@@ -123,11 +161,23 @@ export default function MiCuenta() {
     else setRefreshingRes(false);
   }, [user]);
 
+  const fetchProductOrders = useCallback(async () => {
+    if (!user) return;
+    setLoadingOrders(true);
+    const { data } = await supabase
+      .from('product_orders')
+      .select('*, products(title_es, title_en, image_urls, slug)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    setProductOrders((data as ProductOrderRow[]) ?? []);
+    setLoadingOrders(false);
+  }, [user]);
+
   useEffect(() => {
     fetchReservations();
-  }, [fetchReservations]);
+    fetchProductOrders();
+  }, [fetchReservations, fetchProductOrders]);
 
-  // Silently re-fetch when user returns to the tab so admin changes are reflected
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible' && activeTab === 'reservations') {
@@ -335,6 +385,75 @@ export default function MiCuenta() {
     }
   };
 
+  // Product order handlers
+  const handleProductPayment = async (order: ProductOrderRow) => {
+    setProductCheckoutError(null);
+    setProductCheckoutLoading(order.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(lang === 'en' ? 'Session expired.' : 'Sesión expirada.');
+
+      const title = order.products ? (lang === 'en' ? order.products.title_en : order.products.title_es) : 'Producto';
+      const origin = window.location.origin;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({
+          unit_amount: Math.round(order.total_mxn * 100),
+          quantity: 1,
+          product_name: `${title} — ${lang === 'en' ? 'Product purchase' : 'Compra de producto'}`,
+          success_url: `${origin}/success?order_id=${order.id}&type=product`,
+          cancel_url: `${origin}/mi-cuenta`,
+          order_type: 'product',
+          order_id: order.id,
+          payment_method: productPayMethod,
+          payment_type: 'full',
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json.url) throw new Error(json.error || 'Could not create payment session.');
+      window.location.href = json.url;
+    } catch (err) {
+      setProductCheckoutError(err instanceof Error ? err.message : String(err));
+      setProductCheckoutLoading(null);
+    }
+  };
+
+  const handleProductUploadProof = async (order: ProductOrderRow, file: File) => {
+    setProductProofUploading(order.id);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${order.id}-${Date.now()}.${fileExt}`;
+      const { error: uploadErr } = await supabase.storage.from('payment-proofs').upload(fileName, file, { cacheControl: '3600', upsert: false });
+      if (uploadErr) throw new Error(uploadErr.message);
+      const { data: urlData } = supabase.storage.from('payment-proofs').getPublicUrl(fileName);
+      await supabase.from('product_orders').update({ payment_proof_url: urlData.publicUrl }).eq('id', order.id);
+      await fetchProductOrders();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : String(err));
+    } finally {
+      setProductProofUploading(null);
+    }
+  };
+
+  const handleProductSync = async (order: ProductOrderRow) => {
+    setProductSyncing(order.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ order_id: order.id, order_type: 'product' }),
+      });
+      const result = await res.json();
+      if (result.changed) await fetchProductOrders();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setProductSyncing(null);
+    }
+  };
+
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-MX', {
       year: 'numeric', month: 'long', day: 'numeric',
@@ -342,6 +461,7 @@ export default function MiCuenta() {
 
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
   const displayName = profile.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
+  const hasProductOrders = productOrders.length > 0;
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
@@ -373,7 +493,7 @@ export default function MiCuenta() {
           </button>
         </div>
 
-        <div className="max-w-4xl mx-auto mt-8 flex gap-1 bg-white/10 rounded-xl p-1 w-fit">
+        <div className="max-w-4xl mx-auto mt-8 flex gap-1 bg-white/10 rounded-xl p-1 w-fit flex-wrap">
           <button
             onClick={() => setActiveTab('reservations')}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -382,6 +502,16 @@ export default function MiCuenta() {
           >
             {lang === 'en' ? 'Reservations' : 'Reservaciones'}
           </button>
+          {hasProductOrders && (
+            <button
+              onClick={() => setActiveTab('purchases')}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === 'purchases' ? 'bg-[#E8670A] text-white shadow' : 'text-gray-300 hover:text-white'
+              }`}
+            >
+              {lang === 'en' ? 'My Purchases' : 'Mis Compras'}
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('profile')}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -495,7 +625,6 @@ export default function MiCuenta() {
                             )}
                           </div>
 
-                          {/* Deposit / balance breakdown */}
                           {(isDepositPaid || res.payment_status === 'paid') && res.deposit_amount_mxn != null && (
                             <div className="mt-3 grid grid-cols-2 gap-2">
                               <div className="bg-green-50 rounded-lg px-3 py-2">
@@ -528,7 +657,6 @@ export default function MiCuenta() {
                             <span>{t('account.bookedOn')} {formatDate(res.created_at)}</span>
                           </div>
 
-                          {/* ── Pending initial payment (no deposit paid yet) ── */}
                           {isPendingPayable && (
                             <div className="mt-4">
                               <div className="flex items-center justify-between text-xs mb-1.5">
@@ -577,7 +705,6 @@ export default function MiCuenta() {
                             </div>
                           )}
 
-                          {/* ── Balance payment requested by admin ── */}
                           {balanceRequested && res.payment_status !== 'paid' && (
                             <div className="mt-4">
                               <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-3">
@@ -624,7 +751,6 @@ export default function MiCuenta() {
                             </div>
                           )}
 
-                          {/* ── Bank transfer: upload payment proof ── */}
                           {res.payment_method_type === 'bank_transfer' && res.payment_status === 'pending' && !isClientExpired && (
                             <div className="mt-4">
                               {res.payment_proof_url ? (
@@ -685,7 +811,6 @@ export default function MiCuenta() {
                             </div>
                           )}
 
-                          {/* ── Sync payment button (webhook fallback) ── */}
                           {res.payment_status === 'pending' && (res.stripe_session_id || res.balance_stripe_session_id) && !isClientExpired && (
                             <div className="mt-3">
                               <button
@@ -704,7 +829,6 @@ export default function MiCuenta() {
                             </div>
                           )}
 
-                          {/* Client-side expired notice */}
                           {isClientExpired && (
                             <div className="mt-3 flex items-center gap-1.5 text-xs text-red-500">
                               <AlertTriangle size={12} />
@@ -713,6 +837,192 @@ export default function MiCuenta() {
                                   ? 'This reservation expired and will be cancelled shortly.'
                                   : 'Esta reserva expiró y será cancelada en breve.'}
                               </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── PURCHASES TAB ── */}
+        {activeTab === 'purchases' && (
+          <>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-black text-gray-900">{lang === 'en' ? 'My Purchases' : 'Mis Compras'}</h2>
+              <button
+                onClick={() => fetchProductOrders()}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <RefreshCw size={13} />
+                {lang === 'en' ? 'Refresh' : 'Actualizar'}
+              </button>
+            </div>
+            {loadingOrders ? (
+              <div className="flex justify-center py-16">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#E8670A]" />
+              </div>
+            ) : productOrders.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <ShoppingBag size={28} className="text-gray-400" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{lang === 'en' ? 'No purchases yet' : 'No tienes compras'}</h3>
+                <p className="text-gray-500 text-sm mb-6">{lang === 'en' ? 'Visit our store to buy official products.' : 'Visita nuestra tienda para comprar productos oficiales.'}</p>
+                <button onClick={() => navigate('/productos')} className="px-6 py-3 bg-[#E8670A] text-white font-semibold rounded-xl hover:bg-[#B8520A] transition-colors text-sm">
+                  {lang === 'en' ? 'View Products' : 'Ver Productos'}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {productOrders.map((order) => {
+                  const status = PRODUCT_STATUS_CONFIG[order.payment_status] ?? PRODUCT_STATUS_CONFIG.pending;
+                  const title = order.products ? (lang === 'en' ? order.products.title_en : order.products.title_es) : 'Producto';
+                  const img = order.products?.image_urls?.[0];
+                  const isExpanded = productPayExpanded === order.id;
+                  const isPending = order.payment_status === 'pending';
+                  const isBankTransfer = order.payment_method_type === 'bank_transfer';
+
+                  return (
+                    <div key={order.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex flex-col sm:flex-row">
+                        {img && (
+                          <img src={img} alt={title} className="w-full sm:w-40 h-40 sm:h-auto object-cover flex-shrink-0" />
+                        )}
+                        <div className="flex-1 p-5">
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div>
+                              {order.order_number && (
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <Ticket size={14} className="text-gray-400" />
+                                  <span className="text-xs font-mono font-bold text-gray-600">{order.order_number}</span>
+                                </div>
+                              )}
+                              <h3 className="font-bold text-gray-900 text-base">{title}</h3>
+                            </div>
+                            <span className={`text-xs font-bold px-3 py-1 rounded-full flex-shrink-0 ${status.color}`}>
+                              {status.label}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-gray-600">
+                            <div className="flex items-center gap-1.5">
+                              <Package size={13} className="text-[#E8670A]" />
+                              <span>{order.size || 'Única'} x{order.quantity}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <CreditCard size={13} className="text-[#E8670A]" />
+                              <span>${order.total_mxn.toLocaleString('es-MX')} MXN</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              {order.delivery_method === 'shipping' ? (
+                                <><Truck size={13} className="text-[#E8670A]" /><span>{lang === 'en' ? 'Shipping' : 'Envío'}</span></>
+                              ) : (
+                                <><MapPin size={13} className="text-[#E8670A]" /><span>{lang === 'en' ? 'CDMX pickup' : 'CDMX'}</span></>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Tracking number */}
+                          {order.tracking_number && (
+                            <div className="mt-3 flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                              <Truck size={15} className="text-blue-600 flex-shrink-0" />
+                              <div>
+                                <p className="text-xs font-bold text-blue-800">{lang === 'en' ? 'Tracking number' : 'Guía de rastreo'}</p>
+                                <p className="text-sm font-mono text-blue-700">{order.tracking_number}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-1 text-gray-400 text-xs mt-3">
+                            <Clock size={11} />
+                            <span>{formatDate(order.created_at)}</span>
+                          </div>
+
+                          {/* Pending payment - card/oxxo */}
+                          {isPending && !isBankTransfer && (
+                            <div className="mt-4">
+                              {!isExpanded ? (
+                                <button
+                                  onClick={() => { setProductPayExpanded(order.id); setProductPayMethod(order.payment_method_type as PaymentMethod || 'card'); setProductCheckoutError(null); }}
+                                  className="px-5 py-2.5 bg-[#E8670A] text-white text-sm font-bold rounded-xl hover:bg-[#B8520A] transition-all"
+                                >
+                                  {lang === 'en' ? 'Pay Now' : 'Pagar Ahora'}
+                                </button>
+                              ) : (
+                                <PaymentMethodSelector
+                                  lang={lang}
+                                  methods={STRIPE_PAYMENT_METHODS}
+                                  selected={productPayMethod}
+                                  onSelect={setProductPayMethod}
+                                  onPay={() => handleProductPayment(order)}
+                                  onCancel={() => { setProductPayExpanded(null); setProductCheckoutError(null); }}
+                                  loading={productCheckoutLoading === order.id}
+                                  error={productCheckoutError}
+                                  label={lang === 'en' ? 'Pay Now' : 'Pagar Ahora'}
+                                />
+                              )}
+                            </div>
+                          )}
+
+                          {/* Bank transfer - upload proof */}
+                          {isPending && isBankTransfer && (
+                            <div className="mt-4">
+                              {order.payment_proof_url ? (
+                                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                                  <FileCheck size={16} className="text-green-600 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="text-xs font-bold text-green-800">
+                                      {lang === 'en' ? 'Proof uploaded — pending confirmation' : 'Comprobante enviado — pendiente de confirmación'}
+                                    </p>
+                                    <a href={order.payment_proof_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-green-700 underline mt-1">
+                                      <ExternalLink size={12} />
+                                      {lang === 'en' ? 'View proof' : 'Ver comprobante'}
+                                    </a>
+                                  </div>
+                                </div>
+                              ) : (
+                                <label className="cursor-pointer block">
+                                  <input
+                                    type="file"
+                                    accept="image/*,application/pdf"
+                                    onChange={(e) => {
+                                      const f = e.target.files?.[0];
+                                      if (f) handleProductUploadProof(order, f);
+                                    }}
+                                    className="hidden"
+                                  />
+                                  <div className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed transition-colors ${
+                                    productProofUploading === order.id
+                                      ? 'border-orange-300 bg-orange-50 cursor-wait'
+                                      : 'border-gray-200 hover:border-[#E8670A] hover:bg-orange-50'
+                                  }`}>
+                                    {productProofUploading === order.id ? (
+                                      <><Loader2 size={18} className="animate-spin text-[#E8670A]" /><span className="text-sm font-semibold text-[#E8670A]">{lang === 'en' ? 'Uploading...' : 'Subiendo...'}</span></>
+                                    ) : (
+                                      <><Upload size={18} className="text-gray-400" /><span className="text-sm text-gray-600">{lang === 'en' ? 'Upload payment proof' : 'Subir comprobante de pago'}</span></>
+                                    )}
+                                  </div>
+                                </label>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Sync payment */}
+                          {isPending && order.stripe_session_id && (
+                            <div className="mt-3">
+                              <button
+                                onClick={() => handleProductSync(order)}
+                                disabled={productSyncing === order.id}
+                                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                <RefreshCw size={13} className={productSyncing === order.id ? 'animate-spin' : ''} />
+                                {productSyncing === order.id ? (lang === 'en' ? 'Syncing…' : 'Sincronizando…') : (lang === 'en' ? 'Sync payment status' : 'Sincronizar estado de pago')}
+                              </button>
                             </div>
                           )}
                         </div>

@@ -38,6 +38,8 @@ Deno.serve(async (req) => {
       reservation_id,
       payment_method = 'card',
       payment_type = 'full',
+      order_type = 'reservation',
+      order_id,
     } = await req.json();
 
     if (!unit_amount || typeof unit_amount !== 'number')
@@ -100,12 +102,19 @@ Deno.serve(async (req) => {
       reservation_id,
       payment_method as PaymentMethodInput,
       payment_type as PaymentTypeInput,
+      order_type,
+      order_id,
     );
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    // Persist session ID on the reservation
-    if (reservation_id) {
+    // Persist session ID on the reservation or product order
+    if (order_type === 'product' && order_id) {
+      await supabase
+        .from('product_orders')
+        .update({ stripe_session_id: session.id, payment_method_type: payment_method })
+        .eq('id', order_id);
+    } else if (reservation_id) {
       const updateFields: Record<string, string> = {
         payment_method_type: payment_method,
       };
@@ -139,6 +148,8 @@ function buildSessionParams(
   reservation_id: string | undefined,
   payment_method: PaymentMethodInput,
   payment_type: PaymentTypeInput,
+  order_type: string = 'reservation',
+  order_id: string | undefined,
 ): Stripe.Checkout.SessionCreateParams {
   const lineItems: Stripe.Checkout.SessionCreateParams['line_items'] = [
     {
@@ -151,15 +162,21 @@ function buildSessionParams(
     },
   ];
 
+  const metadata: Record<string, string> = { payment_type };
+  if (order_type === 'product' && order_id) {
+    metadata.order_type = 'product';
+    metadata.order_id = order_id;
+  } else if (reservation_id) {
+    metadata.reservation_id = String(reservation_id);
+  }
+
   const base: Stripe.Checkout.SessionCreateParams = {
     customer: customerId,
     line_items: lineItems,
     mode: 'payment',
     success_url,
     cancel_url,
-    metadata: reservation_id
-      ? { reservation_id: String(reservation_id), payment_type }
-      : undefined,
+    metadata,
   };
 
   if (payment_method === 'oxxo') {

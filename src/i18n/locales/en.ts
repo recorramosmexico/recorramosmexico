@@ -5,6 +5,7 @@ const en = {
     packages: 'Packages',
     about: 'About Us',
     services: 'Services',
+    products: 'Products',
     blog: 'Blog',
     contact: 'Contact',
   },

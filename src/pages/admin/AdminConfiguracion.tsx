@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Save, CheckCircle, Eye, EyeOff, Mail, Send, Image, LogIn } from 'lucide-react';
+import { Settings, Save, CheckCircle, Eye, EyeOff, Mail, Send, Image, LogIn, ShoppingBag } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface SettingRow { key: string; value: string }
@@ -15,11 +15,12 @@ const LABELS: Record<SettingKey, { label: string; hint: string; type: 'text' | '
   logo_url:        { label: 'URL del logo (para emails)', hint: 'URL absoluta de la imagen que aparece en el encabezado de los correos. Ej: https://tudominio.com/Logo_Naranja.jpeg', type: 'url' },
 };
 
-const BOOLEAN_KEYS = ['google_auth_enabled'] as const;
+const BOOLEAN_KEYS = ['google_auth_enabled', 'products_section_enabled'] as const;
 type BooleanKey = typeof BOOLEAN_KEYS[number];
 
 const BOOLEAN_LABELS: Record<BooleanKey, { label: string; hint: string }> = {
   google_auth_enabled: { label: 'Inicio de sesión con Google', hint: 'Activa o desactiva el botón "Continuar con Google" en las pantallas de inicio de sesión y registro.' },
+  products_section_enabled: { label: 'Productos Oficiales', hint: 'Activa o desactiva el enlace a la tienda de productos en el menú del sitio. Aunque esté desactivado, la página sigue siendo accesible vía URL directa.' },
 };
 
 export default function AdminConfiguracion() {
@@ -30,7 +31,7 @@ export default function AdminConfiguracion() {
     admin_email: '',
     logo_url: '',
   });
-  const [boolValues, setBoolValues] = useState<Record<BooleanKey, boolean>>({ google_auth_enabled: true });
+  const [boolValues, setBoolValues] = useState<Record<BooleanKey, boolean>>({ google_auth_enabled: true, products_section_enabled: false });
   const [showKey, setShowKey] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -194,7 +195,32 @@ export default function AdminConfiguracion() {
             <LogIn size={18} className="text-orange-500" />
             <h3 className="font-bold text-gray-800 text-sm">Autenticación</h3>
           </div>
-          {BOOLEAN_KEYS.map((key) => {
+          {(['google_auth_enabled'] as BooleanKey[]).map((key) => {
+            const meta = BOOLEAN_LABELS[key];
+            return (
+              <div key={key} className="flex items-start justify-between gap-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700">{meta.label}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{meta.hint}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBoolValues((prev) => ({ ...prev, [key]: !prev[key] }))}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${boolValues[key] ? 'bg-orange-500' : 'bg-gray-300'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${boolValues[key] ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="border-t border-gray-100 pt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <ShoppingBag size={18} className="text-orange-500" />
+            <h3 className="font-bold text-gray-800 text-sm">Tienda de Productos</h3>
+          </div>
+          {(['products_section_enabled'] as BooleanKey[]).map((key) => {
             const meta = BOOLEAN_LABELS[key];
             return (
               <div key={key} className="flex items-start justify-between gap-4 py-3">

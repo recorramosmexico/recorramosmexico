@@ -138,7 +138,11 @@ async function handleCheckoutPaymentCompleted(
   }
 
   if (isPaid) {
-    await markReservationPaid(metadata?.reservation_id, checkout_session_id, paymentType, supabase);
+    if (metadata?.order_type === 'product' && metadata?.order_id) {
+      await markProductOrderPaid(metadata.order_id, checkout_session_id, supabase);
+    } else {
+      await markReservationPaid(metadata?.reservation_id, checkout_session_id, paymentType, supabase);
+    }
   } else {
     console.info(`Async payment pending for session ${checkout_session_id} (${pmType})`);
   }
@@ -160,8 +164,12 @@ async function handleCheckoutPaymentSucceeded(
     return;
   }
 
-  const paymentType = metadata?.payment_type ?? 'full';
-  await markReservationPaid(metadata?.reservation_id, checkout_session_id, paymentType, supabase);
+  if (metadata?.order_type === 'product' && metadata?.order_id) {
+    await markProductOrderPaid(metadata.order_id, checkout_session_id, supabase);
+  } else {
+    const paymentType = metadata?.payment_type ?? 'full';
+    await markReservationPaid(metadata?.reservation_id, checkout_session_id, paymentType, supabase);
+  }
   console.info(`Async payment succeeded for session ${checkout_session_id}`);
 }
 
@@ -181,6 +189,52 @@ async function handleCheckoutPaymentFailed(
   } else {
     console.info(`Async payment failed for session ${checkout_session_id}`);
   }
+}
+
+async function markProductOrderPaid(
+  orderId: string,
+  sessionId: string,
+  supabase: SupabaseClient,
+) {
+  const { data: order } = await supabase
+    .from('product_orders')
+    .select('id, payment_status, order_number, user_id, product_id, quantity, size, total_mxn')
+    .eq('id', orderId)
+    .maybeSingle();
+  if (!order) return;
+
+  if (order.payment_status === 'paid') return;
+
+  const orderNumber = order.order_number ?? await generateOrderNumber(supabase);
+
+  await supabase
+    .from('product_orders')
+    .update({ payment_status: 'paid', order_number: orderNumber })
+    .eq('id', orderId);
+
+  // Decrement stock for the purchased size
+  if (order.product_id && order.size) {
+    const { data: product } = await supabase
+      .from('products')
+      .select('sizes')
+      .eq('id', order.product_id)
+      .maybeSingle();
+    if (product?.sizes) {
+      const updatedSizes = (product.sizes as Array<{ size: string; stock: number }>).map((s) =>
+        s.size === order.size
+          ? { ...s, stock: Math.max(0, s.stock - (order.quantity || 1)) }
+          : s
+      );
+      await supabase.from('products').update({ sizes: updatedSizes }).eq('id', order.product_id);
+    }
+  }
+
+  console.info(`Product order ${orderId} marked as paid (${orderNumber})`);
+}
+
+async function generateOrderNumber(supabase: SupabaseClient): Promise<string> {
+  const { data } = await supabase.rpc('generate_order_number');
+  return data ?? `RM-${Date.now()}`;
 }
 
 async function markReservationPaid(

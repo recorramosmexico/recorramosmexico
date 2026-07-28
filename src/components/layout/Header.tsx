@@ -3,11 +3,13 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Menu, X, Globe, User } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useProductsSectionEnabled } from '../../hooks/useProductsSectionEnabled';
 
 export default function Header() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const { user } = useAuth();
+  const { enabled: productsEnabled } = useProductsSectionEnabled();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -36,6 +38,7 @@ export default function Header() {
     { path: '/paquetes', label: t('nav.packages') },
     { path: '/nosotros', label: t('nav.about') },
     { path: '/servicios', label: t('nav.services') },
+    ...(productsEnabled ? [{ path: '/productos', label: t('nav.products') }] : []),
     { path: '/blog', label: t('nav.blog') },
     { path: '/contacto', label: t('nav.contact') },
   ];
