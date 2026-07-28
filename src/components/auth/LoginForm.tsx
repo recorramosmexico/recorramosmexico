@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { Alert } from '../ui/Alert'
-import { GoogleAuthButton } from './GoogleAuthButton'
+import { OAuthSection } from './OAuthSection'
 
 export function LoginForm() {
   const [email, setEmail] = useState('')
@@ -41,15 +41,7 @@ export function LoginForm() {
 
           {error && <Alert type="error" className="mb-5">{error}</Alert>}
 
-          {/* Google */}
-          <GoogleAuthButton />
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-xs text-gray-400 font-medium">o continúa con email</span>
-            <div className="flex-1 h-px bg-gray-200" />
-          </div>
+          <OAuthSection label="o continúa con email" />
 
           {/* Email / password form */}
           <form onSubmit={handleSubmit} className="space-y-4">

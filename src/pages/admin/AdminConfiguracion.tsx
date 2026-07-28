@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Save, CheckCircle, Eye, EyeOff, Mail, Send, Image } from 'lucide-react';
+import { Settings, Save, CheckCircle, Eye, EyeOff, Mail, Send, Image, LogIn } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface SettingRow { key: string; value: string }
@@ -15,6 +15,13 @@ const LABELS: Record<SettingKey, { label: string; hint: string; type: 'text' | '
   logo_url:        { label: 'URL del logo (para emails)', hint: 'URL absoluta de la imagen que aparece en el encabezado de los correos. Ej: https://tudominio.com/Logo_Naranja.jpeg', type: 'url' },
 };
 
+const BOOLEAN_KEYS = ['google_auth_enabled'] as const;
+type BooleanKey = typeof BOOLEAN_KEYS[number];
+
+const BOOLEAN_LABELS: Record<BooleanKey, { label: string; hint: string }> = {
+  google_auth_enabled: { label: 'Inicio de sesión con Google', hint: 'Activa o desactiva el botón "Continuar con Google" en las pantallas de inicio de sesión y registro.' },
+};
+
 export default function AdminConfiguracion() {
   const [values, setValues] = useState<Record<SettingKey, string>>({
     smtp2go_api_key: '',
@@ -23,6 +30,7 @@ export default function AdminConfiguracion() {
     admin_email: '',
     logo_url: '',
   });
+  const [boolValues, setBoolValues] = useState<Record<BooleanKey, boolean>>({ google_auth_enabled: true });
   const [showKey, setShowKey] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -35,12 +43,20 @@ export default function AdminConfiguracion() {
     supabase
       .from('settings')
       .select('key, value')
-      .in('key', SETTING_KEYS as unknown as string[])
+      .in('key', [...SETTING_KEYS, ...BOOLEAN_KEYS] as unknown as string[])
       .then(({ data }) => {
         if (data) {
           const map: Partial<Record<SettingKey, string>> = {};
-          (data as SettingRow[]).forEach((r) => { map[r.key as SettingKey] = r.value; });
+          const boolMap: Partial<Record<BooleanKey, boolean>> = {};
+          (data as SettingRow[]).forEach((r) => {
+            if (SETTING_KEYS.includes(r.key as SettingKey)) {
+              map[r.key as SettingKey] = r.value;
+            } else if (BOOLEAN_KEYS.includes(r.key as BooleanKey)) {
+              boolMap[r.key as BooleanKey] = r.value === 'true';
+            }
+          });
           setValues((prev) => ({ ...prev, ...map }));
+          setBoolValues((prev) => ({ ...prev, ...boolMap }));
         }
         setLoading(false);
       });
@@ -51,8 +67,9 @@ export default function AdminConfiguracion() {
     setError('');
     setSaved(false);
 
-    const upserts = SETTING_KEYS.map((key) => ({ key, value: values[key], updated_at: new Date().toISOString() }));
-    const { error: err } = await supabase.from('settings').upsert(upserts);
+    const textUpserts = SETTING_KEYS.map((key) => ({ key, value: values[key] ?? '', updated_at: new Date().toISOString() }));
+    const boolUpserts = BOOLEAN_KEYS.map((key) => ({ key, value: boolValues[key] ? 'true' : 'false', updated_at: new Date().toISOString() }));
+    const { error: err } = await supabase.from('settings').upsert([...textUpserts, ...boolUpserts]);
 
     setSaving(false);
     if (err) {
@@ -171,6 +188,31 @@ export default function AdminConfiguracion() {
             {error}
           </div>
         )}
+
+        <div className="border-t border-gray-100 pt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <LogIn size={18} className="text-orange-500" />
+            <h3 className="font-bold text-gray-800 text-sm">Autenticación</h3>
+          </div>
+          {BOOLEAN_KEYS.map((key) => {
+            const meta = BOOLEAN_LABELS[key];
+            return (
+              <div key={key} className="flex items-start justify-between gap-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700">{meta.label}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{meta.hint}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBoolValues((prev) => ({ ...prev, [key]: !prev[key] }))}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${boolValues[key] ? 'bg-orange-500' : 'bg-gray-300'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${boolValues[key] ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
 
         <div className="flex gap-3 pt-2">
           <button

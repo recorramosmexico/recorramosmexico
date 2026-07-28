@@ -1,8 +1,12 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useGoogleAuthEnabled } from '../../hooks/useGoogleAuthEnabled'
 
 export function GoogleAuthButton() {
   const [loading, setLoading] = useState(false)
+  const { enabled, loading: loadingSetting } = useGoogleAuthEnabled()
+
+  if (loadingSetting || !enabled) return null
 
   const handleGoogleAuth = async () => {
     setLoading(true)
@@ -12,7 +16,6 @@ export function GoogleAuthButton() {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     })
-    // No need to setLoading(false): browser will navigate away
   }
 
   return (

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, User, MapPin } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { GoogleAuthButton } from '../components/auth/GoogleAuthButton';
+import { OAuthSection } from '../components/auth/OAuthSection';
 import { sendEmail } from '../lib/email';
 import { useSEO } from '../hooks/useSEO';
 
@@ -65,15 +65,7 @@ export default function Signup() {
         </div>
 
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-          {/* Google OAuth */}
-          <GoogleAuthButton />
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-xs text-gray-400 font-medium">o regístrate con email</span>
-            <div className="flex-1 h-px bg-gray-200" />
-          </div>
+          <OAuthSection label="o regístrate con email" />
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
