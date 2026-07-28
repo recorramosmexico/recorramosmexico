@@ -213,15 +213,16 @@ export default function ProductoDetalle() {
               <h3 className="font-bold text-amber-900 text-sm mb-3">
                 {lang === 'en' ? 'Bank details for transfer' : 'Datos bancarios para transferencia'}
               </h3>
-              <div className="space-y-1 text-sm text-amber-800">
-                <p><strong>BBVA</strong></p>
-                <p>{lang === 'en' ? 'Account holder' : 'Titular'}: Recorramos México</p>
-                <p>{lang === 'en' ? 'Account' : 'Cuenta'}: 0123 4567 8901 2345</p>
-                <p>CLABE: 012 345 67890 1234567</p>
-                <p>{lang === 'en' ? 'Concept' : 'Concepto'}: {bankTransferInfo.orderId.slice(0, 8)}</p>
-                <p className="text-lg font-black mt-2">
-                  {lang === 'en' ? 'Amount' : 'Monto'}: ${bankTransferInfo.total.toLocaleString('es-MX')} MXN
-                </p>
+              <div className="space-y-1.5 text-sm text-amber-800">
+                <div className="flex justify-between"><span>{lang === 'en' ? 'Bank' : 'Banco'}</span><span className="font-bold">Bancomer (BBVA)</span></div>
+                <div className="flex justify-between"><span>{lang === 'en' ? 'Card' : 'Tarjeta'}</span><span className="font-mono font-bold">4152 3141 0698 0256</span></div>
+                <div className="flex justify-between"><span>CLABE</span><span className="font-mono font-bold">012180004833647476</span></div>
+                <div className="flex justify-between"><span>{lang === 'en' ? 'Account holder' : 'Titular'}</span><span className="font-bold">Trinidad Gil Martínez</span></div>
+                <div className="flex justify-between"><span>{lang === 'en' ? 'Concept' : 'Concepto'}</span><span className="font-mono font-bold">{bankTransferInfo.orderId.slice(0, 8)}</span></div>
+                <div className="border-t border-amber-200 mt-2 pt-2 flex justify-between">
+                  <span className="font-bold">{lang === 'en' ? 'Amount' : 'Monto'}</span>
+                  <span className="text-lg font-black">${bankTransferInfo.total.toLocaleString('es-MX')} MXN</span>
+                </div>
               </div>
             </div>
 
