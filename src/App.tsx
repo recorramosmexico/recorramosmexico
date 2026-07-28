@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
@@ -38,12 +38,21 @@ const ConfirmarPago = lazy(() => import('./pages/ConfirmarPago'));
 const Privacidad = lazy(() => import('./pages/Privacidad'));
 const Terminos = lazy(() => import('./pages/Terminos'));
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 function AppRoutes() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
 
   return (
     <>
+      <ScrollToTop />
       {!isAdmin && <Header />}
       {!isAdmin && <WhatsAppButton />}
       <Suspense fallback={<LoadingScreen />}>
