@@ -88,8 +88,8 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-2.5 text-sm text-gray-400">
                 <Mail size={16} className="text-[#E8670A] flex-shrink-0" />
-                <a href="mailto:recorramosmexico.oficial@gmail.com" className="hover:text-[#E8670A] transition-colors">
-                  recorramosmexico.oficial@gmail.com
+                <a href="mailto:contacto@recorramosmexico.com.mx" className="hover:text-[#E8670A] transition-colors">
+                  contacto@recorramosmexico.com.mx
                 </a>
               </li>
               <li className="flex items-center gap-2.5 text-sm text-gray-400">
