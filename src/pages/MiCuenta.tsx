@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   CalendarDays, MapPin, Users, CreditCard, LogOut, Clock, User, Phone,
+  AlertCircle,
   Mail, Save, CheckCircle, CreditCard as Edit2, AlertTriangle, Banknote,
   Wallet, ArrowRight, Calendar, RefreshCw, Upload, FileCheck, Loader2, ExternalLink,
   ShoppingBag, Package, Truck, Ticket,
@@ -881,11 +882,17 @@ export default function MiCuenta() {
             ) : (
               <div className="space-y-4">
                 {productOrders.map((order) => {
-                  const status = PRODUCT_STATUS_CONFIG[order.payment_status] ?? PRODUCT_STATUS_CONFIG.pending;
+                  const orderElapsed = hoursElapsed(order.created_at);
+                  const isOrderExpired = order.payment_status === 'pending' && orderElapsed >= EXPIRY_HOURS;
+                  const isOrderPendingPayable = order.payment_status === 'pending' && orderElapsed < EXPIRY_HOURS;
+                  const orderExpiryProgress = Math.min(100, (orderElapsed / EXPIRY_HOURS) * 100);
+                  const orderRemaining = timeRemaining(order.created_at);
+                  const orderStatusKey = isOrderExpired ? 'expired' : order.payment_status;
+                  const status = PRODUCT_STATUS_CONFIG[orderStatusKey] ?? PRODUCT_STATUS_CONFIG.pending;
                   const title = order.products ? (lang === 'en' ? order.products.title_en : order.products.title_es) : 'Producto';
                   const img = order.products?.image_urls?.[0];
                   const isExpanded = productPayExpanded === order.id;
-                  const isPending = order.payment_status === 'pending';
+                  const isPending = order.payment_status === 'pending' && !isOrderExpired;
                   const isBankTransfer = order.payment_method_type === 'bank_transfer';
 
                   return (
@@ -943,6 +950,46 @@ export default function MiCuenta() {
                             <Clock size={11} />
                             <span>{formatDate(order.created_at)}</span>
                           </div>
+
+                          {/* Countdown timer for pending orders */}
+                          {isOrderPendingPayable && (
+                            <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Clock size={15} className="text-amber-600" />
+                                <span className="text-xs font-semibold text-amber-800">
+                                  {lang === 'en' ? 'Time remaining to pay:' : 'Tiempo restante para pagar:'}
+                                </span>
+                                <span className="font-bold text-amber-900 text-sm">{formatTimeRemaining(orderRemaining, lang)}</span>
+                              </div>
+                              <div className="w-full bg-amber-100 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    orderExpiryProgress > 75 ? 'bg-red-400' : orderExpiryProgress > 40 ? 'bg-amber-400' : 'bg-green-400'
+                                  }`}
+                                  style={{ width: `${orderExpiryProgress}%` }}
+                                />
+                              </div>
+                              <p className="text-xs text-amber-700 mt-2">
+                                {lang === 'en'
+                                  ? 'If payment is not completed, the order will be cancelled.'
+                                  : 'Si no se completa el pago, el pedido será cancelado.'}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Expired notice */}
+                          {isOrderExpired && (
+                            <div className="mt-3 bg-red-50 border border-red-200 rounded-xl p-3">
+                              <div className="flex items-center gap-2">
+                                <AlertCircle size={15} className="text-red-600" />
+                                <p className="text-xs font-semibold text-red-800">
+                                  {lang === 'en'
+                                    ? 'This order expired and will be cancelled shortly.'
+                                    : 'Este pedido expiró y será cancelado en breve.'}
+                                </p>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Pending payment - card/oxxo */}
                           {isPending && !isBankTransfer && (
