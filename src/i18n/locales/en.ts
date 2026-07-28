@@ -298,7 +298,7 @@ const en = {
       phoneLabel: 'Phone',
       hoursLabel: 'Hours',
       address: 'Paseo de los Sauces Num 5 Local 8, Plaza Tenayo, Col. Valle del Tenayo, Tlalnepantla, Estado de México',
-      email: 'recorramosmexico.oficial@gmail.com',
+      email: 'contacto@recorramosmexico.com.mx',
       phone: '+52 56 2387 2050',
       hours: 'Monday to Saturday: 9:00am - 7:00pm',
     },
