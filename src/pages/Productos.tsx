@@ -165,15 +165,17 @@ export default function Productos() {
                         {product.sizes.map((s) => (
                           <span
                             key={s.size}
-                            className={`text-xs font-semibold px-2 py-0.5 rounded-md border ${
+                            className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border ${
                               s.stock > 0
                                 ? 'bg-gray-50 border-gray-200 text-gray-700'
                                 : 'bg-gray-100 border-gray-200 text-gray-400 line-through'
                             }`}
                           >
                             {s.size}
-                            {s.stock > 0 && s.stock <= 5 && (
-                              <span className="ml-1 text-amber-500">·{s.stock}</span>
+                            {s.stock > 0 && (
+                              <span className={`font-bold ${s.stock <= 5 ? 'text-amber-500' : 'text-green-600'}`}>
+                                {s.stock}
+                              </span>
                             )}
                           </span>
                         ))}
