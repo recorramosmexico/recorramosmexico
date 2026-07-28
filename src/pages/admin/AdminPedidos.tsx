@@ -55,8 +55,32 @@ export default function AdminPedidos() {
     return matchesSearch && matchesStatus;
   });
 
+  const adjustStock = async (productId: string, size: string, quantity: number, decrement: boolean) => {
+    const { data: product } = await supabase.from('products').select('sizes').eq('id', productId).maybeSingle();
+    if (!product?.sizes) return;
+    const updatedSizes = (product.sizes as Array<{ size: string; stock: number }>).map((s) =>
+      s.size === size
+        ? { ...s, stock: decrement ? Math.max(0, s.stock - quantity) : s.stock + quantity }
+        : s
+    );
+    await supabase.from('products').update({ sizes: updatedSizes }).eq('id', productId);
+  };
+
   const updateStatus = async (id: string, status: string) => {
+    const order = orders.find((o) => o.id === id);
+    if (!order) return;
+
+    const wasPaid = order.payment_status === 'paid';
+    const willBePaid = status === 'paid';
+
     await supabase.from('product_orders').update({ payment_status: status }).eq('id', id);
+
+    if (!wasPaid && willBePaid && order.product_id && order.size) {
+      await adjustStock(order.product_id, order.size, order.quantity || 1, true);
+    } else if (wasPaid && !willBePaid && (status === 'cancelled' || status === 'refunded') && order.product_id && order.size) {
+      await adjustStock(order.product_id, order.size, order.quantity || 1, false);
+    }
+
     loadOrders();
   };
 
