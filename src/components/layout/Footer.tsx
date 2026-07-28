@@ -135,7 +135,15 @@ export default function Footer() {
           <p className="text-sm text-gray-500">
             © {new Date().getFullYear()} Recorramos México. {t('footer.rights')}
           </p>
-          <p className="text-xs text-gray-600">{t('footer.legalNote')}</p>
+          <div className="flex gap-4 text-xs text-gray-500">
+            <Link to="/privacidad" className="hover:text-[#E8670A] transition-colors">
+              Política de Privacidad
+            </Link>
+            <span className="text-gray-700">·</span>
+            <Link to="/terminos" className="hover:text-[#E8670A] transition-colors">
+              Términos y Condiciones
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

@@ -35,6 +35,8 @@ const AdminViajeros = lazy(() => import('./pages/admin/AdminViajeros'));
 const AdminCategorias = lazy(() => import('./pages/admin/AdminCategorias'));
 const AdminConfiguracion = lazy(() => import('./pages/admin/AdminConfiguracion'));
 const ConfirmarPago = lazy(() => import('./pages/ConfirmarPago'));
+const Privacidad = lazy(() => import('./pages/Privacidad'));
+const Terminos = lazy(() => import('./pages/Terminos'));
 
 function AppRoutes() {
   const location = useLocation();
@@ -60,6 +62,8 @@ function AppRoutes() {
           <Route path="/cancel" element={<Cancel />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/confirmar-pago" element={<ConfirmarPago />} />
+          <Route path="/privacidad" element={<Privacidad />} />
+          <Route path="/terminos" element={<Terminos />} />
 
           {/* Traveler auth */}
           <Route path="/login" element={<Login />} />
