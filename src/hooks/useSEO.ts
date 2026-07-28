@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-export const SITE_DOMAIN = 'https://recorramosmexico.com';
+export const SITE_DOMAIN = 'https://recorramosmexico.com.mx';
 export const SITE_DOMAIN_MX = 'https://recorramosmexico.com.mx';
 export const SITE_NAME = 'Recorramos México';
 

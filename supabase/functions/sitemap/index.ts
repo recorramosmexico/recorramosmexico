@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const SITE_DOMAIN = "https://recorramosmexico.com";
+const SITE_DOMAIN = "https://recorramosmexico.com.mx";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -8,4 +8,4 @@ Disallow: /success
 Disallow: /cancel
 Disallow: /auth/callback
 
-Sitemap: https://recorramosmexico.com/sitemap.xml
+Sitemap: https://recorramosmexico.com.mx/sitemap.xml
