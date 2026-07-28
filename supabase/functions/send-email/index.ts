@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_admin_proof" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_bank_transfer" | "reservation_confirmed" | "inquiry" | "inquiry_reply";
+  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_admin_proof" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_bank_transfer" | "reservation_confirmed" | "inquiry" | "inquiry_reply" | "product_purchase_traveler" | "product_purchase_admin" | "product_bank_transfer" | "product_payment_confirmed";
   to: string;
   data: Record<string, string | number>;
 }
@@ -402,8 +402,108 @@ Confirmar reserva: ${confirmUrl}`),
         html_body: buildHtml("Recordatorio de Pago", body, logoUrl),
         text_body: buildText(
           subject,
-          `Hola ${data.customer_name},\n\nTu reserva para ${data.tour_title} vence en ${data.hours_remaining} horas.\n\nTour: ${data.tour_title}\nFecha: ${data.departure_date}\nViajeros: ${data.travelers}\nTotal: $${total} MXN\n\nCompleta tu pago en: https://recorramosmexico.com.mx/mi-cuenta`,
+          `Hola ${data.customer_name},\n\nTu reserva para ${data.tour_title} vence en ${data.hours_remaining} horas.\n\nTour: ${data.tour_title}\nFecha: ${data.departure_date}\nViajeros: ${data.travelers}\nTotal: ${total} MXN\n\nCompleta tu pago en: https://recorramosmexico.com.mx/mi-cuenta`,
         ),
+      };
+    }
+
+    case "product_bank_transfer": {
+      const d = data as { product_title: string; quantity: string; size: string; total: string; order_id: string };
+      const subject = "Confirmación de compra — Datos para transferencia";
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">¡Gracias por tu compra! Hemos recibido tu pedido y está en espera de pago.</p>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <p style="margin:0 0 8px;font-size:16px;font-weight:800;color:#111827;">${d.product_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Cantidad:</strong> ${d.quantity}</p>
+          ${d.size ? `<p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Talla:</strong> ${d.size}</p>` : ""}
+          <p style="margin:0;font-size:14px;font-weight:700;color:#E8670A;">Total: ${d.total} MXN</p>
+        </div>
+        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:1px;">Datos Bancarios para Transferencia</p>
+          <p style="margin:0 0 4px;font-size:14px;color:#374151;"><strong>Banco:</strong> Bancomer (BBVA)</p>
+          <p style="margin:0 0 4px;font-size:14px;color:#374151;"><strong>Tarjeta:</strong> <span style="font-family:monospace;">4152 3141 0698 0256</span></p>
+          <p style="margin:0 0 4px;font-size:14px;color:#374151;"><strong>CLABE:</strong> <span style="font-family:monospace;">012180004833647476</span></p>
+          <p style="margin:0 0 4px;font-size:14px;color:#374151;"><strong>Titular:</strong> Trinidad Gil Martínez</p>
+          <p style="margin:8px 0 4px;font-size:14px;color:#374151;"><strong>Concepto:</strong> <span style="font-family:monospace;">${d.order_id.slice(0, 8)}</span></p>
+          <p style="margin:8px 0 0;font-size:16px;font-weight:800;color:#78350f;">Total a pagar: ${d.total} MXN</p>
+        </div>
+        <div style="background:#fff7ed;border-left:4px solid #E8670A;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;">
+          <p style="margin:0 0 4px;color:#c2410c;font-size:14px;font-weight:700;">⚠️ Importante: Tienes 72 horas para completar la transferencia.</p>
+          <p style="margin:0;color:#c2410c;font-size:13px;line-height:1.6;">Una vez que hagas la transferencia, sube tu comprobante de pago desde "Mis Compras" en tu cuenta para que confirmemos tu pedido.</p>
+        </div>
+        <a href="https://recorramosmexico.com.mx/mi-cuenta" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Ir a Mis Compras</a>
+        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">Si tienes preguntas escribenos a:<br><a href="https://wa.me/525623872050" style="color:#E8670A;">wa.me/525623872050</a> o por mail a:<br><a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+      return {
+        subject,
+        html_body: buildHtml("Confirmación de Compra — Datos para Transferencia", body, logoUrl),
+        text_body: buildText(subject, `¡Gracias por tu compra!\n\nProducto: ${d.product_title}\nCantidad: ${d.quantity}${d.size ? `\nTalla: ${d.size}` : ""}\nTotal: ${d.total} MXN\n\nDATOS BANCARIOS:\nBanco: Bancomer (BBVA)\nTarjeta: 4152 3141 0698 0256\nCLABE: 012180004833647476\nTitular: Trinidad Gil Martínez\nConcepto: ${d.order_id.slice(0, 8)}\nTotal a pagar: ${d.total} MXN\n\nIMPORTANTE: Tienes 72 horas para realizar la transferencia. Sube tu comprobante desde "Mis Compras" en tu cuenta.\n\nVer estado: https://recorramosmexico.com.mx/mi-cuenta`),
+      };
+    }
+
+    case "product_purchase_traveler": {
+      const d = data as { product_title: string; quantity: string; size: string; total: string; order_number: string; payment_method: string };
+      const subject = "¡Compra confirmada! — Recorramos México";
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">¡Gracias por tu compra! Tu pago ha sido confirmado y tu pedido está en proceso.</p>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <p style="margin:0 0 8px;font-size:16px;font-weight:800;color:#111827;">${d.product_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Orden:</strong> <span style="font-family:monospace;">${d.order_number}</span></p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Cantidad:</strong> ${d.quantity}</p>
+          ${d.size ? `<p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Talla:</strong> ${d.size}</p>` : ""}
+          <p style="margin:0;font-size:14px;font-weight:700;color:#10b981;">Total pagado: ${d.total} MXN</p>
+        </div>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Puedes ver el estado de tu pedido y la guía de rastreo en la sección "Mis Compras" de tu cuenta.</p>
+        <a href="https://recorramosmexico.com.mx/mi-cuenta" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Ir a Mis Compras</a>
+        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">Si tienes preguntas escribenos a:<br><a href="https://wa.me/525623872050" style="color:#E8670A;">wa.me/525623872050</a> o por mail a:<br><a href="mailto:contacto@recorramosmexico.com.mx" style="color:#E8670A;">contacto@recorramosmexico.com.mx</a></p>`;
+      return {
+        subject,
+        html_body: buildHtml("¡Compra Confirmada!", body, logoUrl),
+        text_body: buildText(subject, `¡Gracias por tu compra!\n\nProducto: ${d.product_title}\nOrden: ${d.order_number}\nCantidad: ${d.quantity}${d.size ? `\nTalla: ${d.size}` : ""}\nTotal pagado: ${d.total} MXN\n\nPuedes ver el estado de tu pedido en: https://recorramosmexico.com.mx/mi-cuenta`),
+      };
+    }
+
+    case "product_purchase_admin": {
+      const d = data as { product_title: string; quantity: string; size: string; total: string; order_number: string; customer_name: string; email: string; delivery_method: string; payment_method: string };
+      const subject = `Nueva compra de producto — ${d.order_number}`;
+      const deliveryLabel = d.delivery_method === "shipping" ? "Envío" : "Entrega personal CDMX";
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">Se ha registrado una nueva compra en la tienda de productos.</p>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <p style="margin:0 0 8px;font-size:16px;font-weight:800;color:#111827;">${d.product_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Orden:</strong> <span style="font-family:monospace;">${d.order_number}</span></p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Cantidad:</strong> ${d.quantity}</p>
+          ${d.size ? `<p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Talla:</strong> ${d.size}</p>` : ""}
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total:</strong> ${d.total} MXN</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Cliente:</strong> ${d.customer_name}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Email:</strong> ${d.email}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Entrega:</strong> ${deliveryLabel}</p>
+          <p style="margin:0;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Pago:</strong> ${d.payment_method}</p>
+        </div>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0;">Revisa los detalles completos en el panel de administración → Pedidos Productos.</p>`;
+      return {
+        subject,
+        html_body: buildHtml("Nueva Compra de Producto", body, logoUrl),
+        text_body: buildText(subject, `Nueva compra de producto.\n\nOrden: ${d.order_number}\nProducto: ${d.product_title}\nCantidad: ${d.quantity}${d.size ? `\nTalla: ${d.size}` : ""}\nTotal: ${d.total} MXN\nCliente: ${d.customer_name}\nEmail: ${d.email}\nEntrega: ${deliveryLabel}\nPago: ${d.payment_method}\n\nRevisa en el panel de administración → Pedidos Productos.`),
+      };
+    }
+
+    case "product_payment_confirmed": {
+      const d = data as { product_title: string; quantity: string; size: string; total: string; order_number: string; customer_name: string; email: string; delivery_method: string };
+      const subject = `Pago confirmado — Pedido ${d.order_number}`;
+      const deliveryLabel = d.delivery_method === "shipping" ? "Envío" : "Entrega personal CDMX";
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">Se ha confirmado el pago de un pedido de producto.</p>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <p style="margin:0 0 8px;font-size:16px;font-weight:800;color:#111827;">${d.product_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Orden:</strong> <span style="font-family:monospace;">${d.order_number}</span></p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Cantidad:</strong> ${d.quantity}</p>
+          ${d.size ? `<p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Talla:</strong> ${d.size}</p>` : ""}
+          <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#10b981;">Total pagado: ${d.total} MXN</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Cliente:</strong> ${d.customer_name}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Email:</strong> ${d.email}</p>
+          <p style="margin:0;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Entrega:</strong> ${deliveryLabel}</p>
+        </div>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0;">Procede a preparar el envío o coordinar la entrega. Captura la guía de rastreo desde el panel de administración → Pedidos Productos.</p>`;
+      return {
+        subject,
+        html_body: buildHtml("Pago de Producto Confirmado", body, logoUrl),
+        text_body: buildText(subject, `Pago confirmado.\n\nOrden: ${d.order_number}\nProducto: ${d.product_title}\nCantidad: ${d.quantity}${d.size ? `\nTalla: ${d.size}` : ""}\nTotal: ${d.total} MXN\nCliente: ${d.customer_name}\nEmail: ${d.email}\nEntrega: ${deliveryLabel}\n\nProcede a preparar el envío. Captura la guía desde el panel → Pedidos Productos.`),
       };
     }
   }

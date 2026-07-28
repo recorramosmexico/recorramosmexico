@@ -198,7 +198,7 @@ async function markProductOrderPaid(
 ) {
   const { data: order } = await supabase
     .from('product_orders')
-    .select('id, payment_status, order_number, user_id, product_id, quantity, size, total_mxn')
+    .select('id, payment_status, order_number, user_id, product_id, quantity, size, total_mxn, delivery_method, products(title_es, title_en), profiles(full_name, email)')
     .eq('id', orderId)
     .maybeSingle();
   if (!order) return;
@@ -229,7 +229,49 @@ async function markProductOrderPaid(
     }
   }
 
+  // Send confirmation emails
+  const productTitle = order.products?.title_es ?? 'Producto';
+  const customerName = order.profiles?.full_name ?? 'Cliente';
+  const customerEmail = order.profiles?.email ?? '';
+
+  if (customerEmail) {
+    await sendProductEmail(supabase, 'product_purchase_traveler', customerEmail, {
+      product_title: productTitle,
+      quantity: String(order.quantity),
+      size: order.size ?? '',
+      total: String(order.total_mxn),
+      order_number: orderNumber,
+      payment_method: 'Stripe',
+    });
+  }
+
+  await sendProductEmail(supabase, 'product_payment_confirmed', 'contacto@recorramosmexico.com.mx', {
+    product_title: productTitle,
+    quantity: String(order.quantity),
+    size: order.size ?? '',
+    total: String(order.total_mxn),
+    order_number: orderNumber,
+    customer_name: customerName,
+    email: customerEmail,
+    delivery_method: order.delivery_method ?? 'shipping',
+  });
+
   console.info(`Product order ${orderId} marked as paid (${orderNumber})`);
+}
+
+async function sendProductEmail(supabase: SupabaseClient, type: string, to: string, emailData: Record<string, string>) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+    await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ type, to, data: emailData }),
+    });
+  } catch (err) {
+    console.error('Failed to send product email:', err);
+  }
 }
 
 async function generateOrderNumber(supabase: SupabaseClient): Promise<string> {

@@ -149,14 +149,34 @@ export default function ProductoDetalle() {
       const orderId = order.id;
 
       if (paymentMethod === 'bank_transfer') {
-        // Send notification emails
+        // Send confirmation email to traveler with bank details
         await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
           body: JSON.stringify({
             type: 'product_bank_transfer',
             to: user.email,
-            data: { product_title: title, quantity: String(quantity), size: selectedSize, total: String(total) },
+            data: { product_title: title, quantity: String(quantity), size: selectedSize, total: String(total), order_id: orderId },
+          }),
+        });
+        // Send notification to admin
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({
+            type: 'product_purchase_admin',
+            to: 'contacto@recorramosmexico.com.mx',
+            data: {
+              product_title: title,
+              quantity: String(quantity),
+              size: selectedSize,
+              total: String(total),
+              order_number: orderId.slice(0, 8),
+              customer_name: user.user_metadata?.full_name ?? user.email ?? '',
+              email: user.email ?? '',
+              delivery_method: deliveryMethod,
+              payment_method: 'Transferencia bancaria',
+            },
           }),
         });
         setBankTransferInfo({ orderId, total });
@@ -180,6 +200,26 @@ export default function ProductoDetalle() {
         });
         const json = await response.json();
         if (!response.ok || !json.url) throw new Error(json.error || 'Could not create payment session.');
+        // Send admin notification for card/oxxo purchases
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({
+            type: 'product_purchase_admin',
+            to: 'contacto@recorramosmexico.com.mx',
+            data: {
+              product_title: title,
+              quantity: String(quantity),
+              size: selectedSize,
+              total: String(total),
+              order_number: orderId.slice(0, 8),
+              customer_name: user.user_metadata?.full_name ?? user.email ?? '',
+              email: user.email ?? '',
+              delivery_method: deliveryMethod,
+              payment_method: paymentMethod === 'card' ? 'Tarjeta' : 'OXXO',
+            },
+          }),
+        });
         window.location.href = json.url;
       }
     } catch (err) {
