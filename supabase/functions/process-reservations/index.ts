@@ -28,21 +28,35 @@ Deno.serve(async (req: Request) => {
     const reminderWindowEnd = new Date(now.getTime() - REMINDER_WINDOW_MIN * 60 * 60 * 1000).toISOString();
 
     // ── 1. Auto-cancel reservations pending > 72 hours ──────────────────────────
-    const { data: cancelled, error: cancelError } = await supabase
+    const { data: cancelledRes, error: cancelResError } = await supabase
       .from('reservations')
       .update({ payment_status: 'cancelled' })
       .eq('payment_status', 'pending')
       .lt('created_at', expiryThreshold)
       .select('id');
 
-    if (cancelError) {
-      console.error('Cancel error:', cancelError.message);
+    if (cancelResError) {
+      console.error('Cancel reservations error:', cancelResError.message);
     } else {
-      console.log(`Cancelled ${cancelled?.length ?? 0} expired reservations`);
+      console.log(`Cancelled ${cancelledRes?.length ?? 0} expired reservations`);
     }
 
-    // ── 2. Send 24-hour reminder emails ─────────────────────────────────────────
-    const { data: toRemind, error: reminderQueryError } = await supabase
+    // ── 1b. Auto-cancel product orders pending > 72 hours ────────────────────────
+    const { data: cancelledOrders, error: cancelOrdersError } = await supabase
+      .from('product_orders')
+      .update({ payment_status: 'cancelled' })
+      .eq('payment_status', 'pending')
+      .lt('created_at', expiryThreshold)
+      .select('id');
+
+    if (cancelOrdersError) {
+      console.error('Cancel product orders error:', cancelOrdersError.message);
+    } else {
+      console.log(`Cancelled ${cancelledOrders?.length ?? 0} expired product orders`);
+    }
+
+    // ── 2. Send 24-hour reminder emails for reservations ──────────────────────────
+    const { data: toRemindRes, error: reminderQueryError } = await supabase
       .from('reservations')
       .select('id, email, customer_name, departure_date, travelers, total_price_mxn, created_at, tours(title_es)')
       .eq('payment_status', 'pending')
@@ -52,10 +66,10 @@ Deno.serve(async (req: Request) => {
 
     if (reminderQueryError) {
       console.error('Reminder query error:', reminderQueryError.message);
-    } else if (toRemind && toRemind.length > 0) {
+    } else if (toRemindRes && toRemindRes.length > 0) {
       const sendEmailUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`;
 
-      for (const res of toRemind) {
+      for (const res of toRemindRes) {
         const hoursElapsed = (now.getTime() - new Date(res.created_at).getTime()) / (60 * 60 * 1000);
         const hoursRemaining = Math.max(0, Math.round(EXPIRY_HOURS - hoursElapsed));
         const tourTitle = (res.tours as { title_es: string } | null)?.title_es ?? 'Tu tour';
@@ -81,7 +95,6 @@ Deno.serve(async (req: Request) => {
             }),
           });
 
-          // Mark reminder as sent
           await supabase
             .from('reservations')
             .update({ reminder_sent_at: now.toISOString() })
@@ -91,13 +104,71 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      console.log(`Sent ${toRemind.length} reminder emails`);
+      console.log(`Sent ${toRemindRes.length} reservation reminder emails`);
+    }
+
+    // ── 2b. Send 24-hour reminder emails for product orders ───────────────────────
+    const { data: toRemindOrders, error: orderReminderError } = await supabase
+      .from('product_orders')
+      .select('id, user_id, product_id, quantity, size, total_mxn, created_at, products(title_es), profiles(full_name, email)')
+      .eq('payment_status', 'pending')
+      .is('reminder_sent_at', null)
+      .gte('created_at', reminderWindowStart)
+      .lte('created_at', reminderWindowEnd);
+
+    if (orderReminderError) {
+      console.error('Product order reminder query error:', orderReminderError.message);
+    } else if (toRemindOrders && toRemindOrders.length > 0) {
+      const sendEmailUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`;
+
+      for (const order of toRemindOrders) {
+        const hoursElapsed = (now.getTime() - new Date(order.created_at).getTime()) / (60 * 60 * 1000);
+        const hoursRemaining = Math.max(0, Math.round(EXPIRY_HOURS - hoursElapsed));
+        const productTitle = (order.products as { title_es: string } | null)?.title_es ?? 'Tu producto';
+        const customerEmail = (order.profiles as { email: string } | null)?.email ?? '';
+        const customerName = (order.profiles as { full_name: string } | null)?.full_name ?? 'Cliente';
+
+        if (!customerEmail) continue;
+
+        try {
+          await fetch(sendEmailUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+            },
+            body: JSON.stringify({
+              type: 'product_payment_reminder',
+              to: customerEmail,
+              data: {
+                customer_name: customerName,
+                product_title: productTitle,
+                quantity: String(order.quantity),
+                size: order.size ?? '',
+                total: String(order.total_mxn),
+                hours_remaining: String(hoursRemaining),
+              },
+            }),
+          });
+
+          await supabase
+            .from('product_orders')
+            .update({ reminder_sent_at: now.toISOString() })
+            .eq('id', order.id);
+        } catch (emailErr) {
+          console.error(`Failed to send reminder for product order ${order.id}:`, emailErr);
+        }
+      }
+
+      console.log(`Sent ${toRemindOrders.length} product order reminder emails`);
     }
 
     return new Response(
       JSON.stringify({
-        cancelled: cancelled?.length ?? 0,
-        reminders_sent: toRemind?.length ?? 0,
+        cancelled_reservations: cancelledRes?.length ?? 0,
+        cancelled_product_orders: cancelledOrders?.length ?? 0,
+        reservation_reminders_sent: toRemindRes?.length ?? 0,
+        product_order_reminders_sent: toRemindOrders?.length ?? 0,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );

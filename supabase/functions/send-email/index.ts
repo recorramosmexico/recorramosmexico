@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_admin_proof" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_bank_transfer" | "reservation_confirmed" | "inquiry" | "inquiry_reply" | "product_purchase_traveler" | "product_purchase_admin" | "product_bank_transfer" | "product_payment_confirmed";
+  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_admin_proof" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_bank_transfer" | "reservation_confirmed" | "inquiry" | "inquiry_reply" | "product_purchase_traveler" | "product_purchase_admin" | "product_bank_transfer" | "product_payment_confirmed" | "product_payment_reminder";
   to: string;
   data: Record<string, string | number>;
 }
@@ -504,6 +504,25 @@ Confirmar reserva: ${confirmUrl}`),
         subject,
         html_body: buildHtml("Pago de Producto Confirmado", body, logoUrl),
         text_body: buildText(subject, `Pago confirmado.\n\nOrden: ${d.order_number}\nProducto: ${d.product_title}\nCantidad: ${d.quantity}${d.size ? `\nTalla: ${d.size}` : ""}\nTotal: ${d.total} MXN\nCliente: ${d.customer_name}\nEmail: ${d.email}\nEntrega: ${deliveryLabel}\n\nProcede a preparar el envío. Captura la guía desde el panel → Pedidos Productos.`),
+      };
+    }
+
+    case "product_payment_reminder": {
+      const d = data as { customer_name: string; product_title: string; quantity: string; size: string; total: string; hours_remaining: string };
+      const subject = `Recordatorio: Tu pedido expira en ${d.hours_remaining} horas`;
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">Hola <strong>${d.customer_name}</strong>,</p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">Tienes un pedido pendiente de pago. Si no completas el pago en <strong style="color:#dc2626;">${d.hours_remaining} horas</strong>, el pedido será cancelado automáticamente.</p>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <p style="margin:0 0 8px;font-size:16px;font-weight:800;color:#111827;">${d.product_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Cantidad:</strong> ${d.quantity}</p>
+          ${d.size ? `<p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Talla:</strong> ${d.size}</p>` : ""}
+          <p style="margin:0;font-size:14px;font-weight:700;color:#dc2626;">Total: ${d.total} MXN</p>
+        </div>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0;">Sube tu comprobante de pago desde el enlace de confirmación que recibiste por correo, o contáctanos por WhatsApp para assistance.</p>`;
+      return {
+        subject,
+        html_body: buildHtml("Recordatorio de Pago — Pedido", body, logoUrl),
+        text_body: buildText(subject, `Hola ${d.customer_name},\n\nTienes un pedido pendiente de pago. Si no completas el pago en ${d.hours_remaining} horas, el pedido será cancelado automáticamente.\n\nProducto: ${d.product_title}\nCantidad: ${d.quantity}${d.size ? `\nTalla: ${d.size}` : ""}\nTotal: ${d.total} MXN\n\nSube tu comprobante de pago o contáctanos por WhatsApp.`),
       };
     }
   }

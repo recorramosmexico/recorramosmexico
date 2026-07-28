@@ -147,6 +147,7 @@ export interface ProductOrder {
   refund_status: string | null;
   refund_method: 'stripe' | 'bank_transfer' | null;
   refunded_at: string | null;
+  reminder_sent_at: string | null;
   created_at: string;
   products?: Pick<Product, 'title_es' | 'title_en' | 'image_urls' | 'slug'> | null;
 }
