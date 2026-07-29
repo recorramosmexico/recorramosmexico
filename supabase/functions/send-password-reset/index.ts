@@ -28,12 +28,14 @@ Deno.serve(async (req: Request) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    const siteUrl = Deno.env.get("SITE_URL") || "https://recorramosmexico.com.mx";
+
     // Generate a recovery link using the admin API (otp type = recovery)
     const { data, error } = await supabaseAdmin.auth.admin.generateLink({
       type: "recovery",
       email,
       options: {
-        redirectTo: `${new URL(req.url).origin}/recuperar-contrasena`,
+        redirectTo: `${siteUrl}/recuperar-contrasena`,
       },
     });
 
