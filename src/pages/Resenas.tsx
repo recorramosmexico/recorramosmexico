@@ -93,7 +93,7 @@ export default function Resenas() {
       rating,
       comment_es: comment.trim(),
       comment_en: comment.trim(),
-      is_approved: false,
+      is_approved: rating >= 3,
       email: profile?.email || user.email || null,
       phone: profile?.phone || null,
     });
@@ -163,8 +163,9 @@ export default function Resenas() {
                 </div>
                 <h3 className="text-xl font-black text-gray-900 mb-2">¡Gracias por tu reseña!</h3>
                 <p className="text-gray-500 text-sm max-w-md">
-                  Tu opinión ha sido enviada y está en revisión. Una vez aprobada por nuestro equipo,
-                  aparecerá en esta página para que otros viajeros la lean.
+                  {rating >= 3
+                    ? 'Tu opinión se ha publicado y ya es visible para otros viajeros en esta página.'
+                    : 'Gracias por compartir tu experiencia. Tu opinión es importante para nosotros y la revisaremos antes de publicarla.'}
                 </p>
                 <button
                   onClick={() => setSubmitSuccess(false)}
@@ -254,9 +255,7 @@ export default function Resenas() {
                       </>
                     )}
                   </button>
-                  <p className="text-xs text-gray-400 text-center">
-                    Tu reseña será revisada por nuestro equipo antes de publicarse.
-                  </p>
+
                 </form>
               </div>
             ) : (

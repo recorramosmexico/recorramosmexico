@@ -124,7 +124,7 @@ export default function AdminResenas() {
           <h1 className="text-2xl font-black text-gray-900">Gestión de Reseñas</h1>
           <p className="text-gray-500 text-sm mt-1">
             {pendingCount > 0 ? (
-              <span className="text-amber-600 font-semibold">{pendingCount} reseñas pendientes de aprobar</span>
+              <span className="text-amber-600 font-semibold">{pendingCount} reseñas de 1-2 estrellas requieren revisión</span>
             ) : (
               'Todas las reseñas están al día'
             )}
@@ -141,7 +141,7 @@ export default function AdminResenas() {
 
       <div className="flex gap-2 mb-6">
         {[
-          { value: 'pending', label: `Pendientes (${pendingCount})` },
+          { value: 'pending', label: `Revisión (${pendingCount})` },
           { value: 'approved', label: 'Aprobadas' },
           { value: 'all', label: 'Todas' },
         ].map(({ value, label }) => (
@@ -188,7 +188,7 @@ export default function AdminResenas() {
                       </div>
                     </div>
                     <span className={`ml-auto px-2.5 py-1 text-xs font-semibold rounded-full ${review.is_approved ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {review.is_approved ? 'Aprobada' : 'Pendiente'}
+                      {review.is_approved ? 'Publicada' : 'En revisión'}
                     </span>
                   </div>
                   <p className="text-gray-600 text-sm leading-relaxed ml-12">"{review.comment_es}"</p>
