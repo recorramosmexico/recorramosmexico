@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { ShoppingBag, Search, Package } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useSEO } from '../hooks/useSEO';
-import { useProductsSectionEnabled } from '../hooks/useProductsSectionEnabled';
 import type { Product } from '../types';
 
 const CATEGORIES = ['gorras', 'camisetas', 'toallas', 'accesorios', 'otros'];
@@ -12,7 +11,6 @@ const CATEGORIES = ['gorras', 'camisetas', 'toallas', 'accesorios', 'otros'];
 export default function Productos() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language === 'en' ? 'en' : 'es';
-  const { enabled } = useProductsSectionEnabled();
 
   useSEO({
     title: lang === 'en' ? 'Official Products' : 'Productos Oficiales',
