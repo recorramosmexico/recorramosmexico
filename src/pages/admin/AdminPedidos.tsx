@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Package, Search, RefreshCw, Truck, X, Eye, Download,
-  CreditCard, Banknote, MapPin, RotateCcw, XCircle, Ticket,
+  CreditCard, Banknote, MapPin, RotateCcw, XCircle, Ticket, Trash2,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { ProductOrder } from '../../types';
@@ -31,6 +31,8 @@ export default function AdminPedidos() {
   const [refundMethod, setRefundMethod] = useState<'stripe' | 'bank_transfer'>('stripe');
   const [refundLoading, setRefundLoading] = useState(false);
   const [cancelModal, setCancelModal] = useState<OrderWithProduct | null>(null);
+  const [deleteModal, setDeleteModal] = useState<OrderWithProduct | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadOrders = useCallback(() => {
     setLoading(true);
@@ -131,6 +133,15 @@ export default function AdminPedidos() {
     } finally {
       setRefundLoading(false);
     }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteModal) return;
+    setDeleting(true);
+    await supabase.from('product_orders').delete().eq('id', deleteModal.id);
+    setDeleting(false);
+    setDeleteModal(null);
+    loadOrders();
   };
 
   const handleCancel = async () => {
@@ -348,6 +359,10 @@ export default function AdminPedidos() {
                             <XCircle size={15} />
                           </button>
                         )}
+                        {/* Delete */}
+                        <button onClick={() => setDeleteModal(o)} title="Eliminar pedido" className="p-1.5 text-gray-400 hover:text-red-600 transition">
+                          <Trash2 size={15} />
+                        </button>
                         {/* Status dropdown */}
                         <select
                           value={o.payment_status}
@@ -461,6 +476,34 @@ export default function AdminPedidos() {
               </button>
               <button onClick={handleRefund} disabled={refundLoading} className="flex-1 px-4 py-2.5 bg-sky-500 text-white text-sm font-bold rounded-xl hover:bg-sky-600 disabled:opacity-50 transition">
                 {refundLoading ? 'Procesando...' : 'Reembolsar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setDeleteModal(null)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                <Trash2 size={20} className="text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-black text-gray-900">Eliminar pedido</h3>
+                <p className="text-xs text-gray-500 font-mono">{deleteModal.order_number ?? deleteModal.id.slice(0, 8)}</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 mb-6">
+              Esta acción es <span className="font-semibold text-red-600">permanente e irreversible</span>. El pedido se eliminará completamente del sistema.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteModal(null)} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition">
+                Cancelar
+              </button>
+              <button onClick={handleDelete} disabled={deleting} className="flex-1 px-4 py-2.5 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 disabled:opacity-50 transition">
+                {deleting ? 'Eliminando...' : 'Sí, eliminar'}
               </button>
             </div>
           </div>
