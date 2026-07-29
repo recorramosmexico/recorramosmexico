@@ -6,7 +6,7 @@ import {
   AlertCircle,
   Mail, Save, CheckCircle, CreditCard as Edit2, AlertTriangle, Banknote,
   Wallet, ArrowRight, Calendar, RefreshCw, Upload, FileCheck, Loader2, ExternalLink,
-  ShoppingBag, Package, Truck, Ticket,
+  ShoppingBag, Package, Truck, Ticket, Lock, Eye, EyeOff, Shield,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -120,6 +120,12 @@ export default function MiCuenta() {
   const [syncError, setSyncError] = useState<string | null>(null);
 
   // Product order payment states
+  const [pwForm, setPwForm] = useState({ newPassword: '', confirm: '' });
+  const [savingPw, setSavingPw] = useState(false);
+  const [pwSaved, setPwSaved] = useState(false);
+  const [pwError, setPwError] = useState('');
+  const [showPw, setShowPw] = useState(false);
+
   const [productPayExpanded, setProductPayExpanded] = useState<string | null>(null);
   const [productPayMethod, setProductPayMethod] = useState<PaymentMethod>('card');
   const [productCheckoutLoading, setProductCheckoutLoading] = useState<string | null>(null);
@@ -229,6 +235,29 @@ export default function MiCuenta() {
     } else {
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 3000);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setPwError('');
+    setPwSaved(false);
+    if (pwForm.newPassword.length < 6) {
+      setPwError(lang === 'en' ? 'Password must be at least 6 characters.' : 'La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+    if (pwForm.newPassword !== pwForm.confirm) {
+      setPwError(lang === 'en' ? 'Passwords do not match.' : 'Las contraseñas no coinciden.');
+      return;
+    }
+    setSavingPw(true);
+    const { error } = await supabase.auth.updateUser({ password: pwForm.newPassword });
+    setSavingPw(false);
+    if (error) {
+      setPwError(error.message);
+    } else {
+      setPwSaved(true);
+      setPwForm({ newPassword: '', confirm: '' });
+      setTimeout(() => setPwSaved(false), 3000);
     }
   };
 
@@ -1209,6 +1238,85 @@ export default function MiCuenta() {
                 )}
               </button>
             </div>
+
+            {/* Password change — only for email/password accounts */}
+            {user?.app_metadata?.provider !== 'google' && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 mt-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-9 h-9 rounded-xl bg-[#E8670A]/10 flex items-center justify-center">
+                    <Shield size={18} className="text-[#E8670A]" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">{lang === 'en' ? 'Security' : 'Seguridad'}</h3>
+                    <p className="text-xs text-gray-500">{lang === 'en' ? 'Change your account password' : 'Cambia la contraseña de tu cuenta'}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                      {lang === 'en' ? 'New password' : 'Nueva contraseña'}
+                    </label>
+                    <div className="relative">
+                      <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type={showPw ? 'text' : 'password'}
+                        value={pwForm.newPassword}
+                        onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
+                        placeholder={lang === 'en' ? 'At least 6 characters' : 'Mínimo 6 caracteres'}
+                        autoComplete="new-password"
+                        className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 focus:border-[#E8670A] transition"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPw((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        tabIndex={-1}
+                      >
+                        {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                      {lang === 'en' ? 'Confirm new password' : 'Confirmar nueva contraseña'}
+                    </label>
+                    <div className="relative">
+                      <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type={showPw ? 'text' : 'password'}
+                        value={pwForm.confirm}
+                        onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
+                        placeholder={lang === 'en' ? 'Repeat your new password' : 'Repite tu nueva contraseña'}
+                        autoComplete="new-password"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 focus:border-[#E8670A] transition"
+                      />
+                    </div>
+                  </div>
+
+                  {pwError && (
+                    <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100">
+                      {pwError}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleChangePassword}
+                    disabled={savingPw || !pwForm.newPassword || !pwForm.confirm}
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-[#1A1A1A] text-white font-bold rounded-xl hover:bg-black transition-colors disabled:opacity-50"
+                  >
+                    {pwSaved ? (
+                      <><CheckCircle size={18} />{lang === 'en' ? 'Password updated!' : '¡Contraseña actualizada!'}</>
+                    ) : savingPw ? (
+                      <><Loader2 size={18} className="animate-spin" />{lang === 'en' ? 'Saving...' : 'Guardando...'}</>
+                    ) : (
+                      <><Lock size={18} />{lang === 'en' ? 'Update Password' : 'Actualizar Contraseña'}</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
