@@ -41,6 +41,7 @@ const AdminPedidos = lazy(() => import('./pages/admin/AdminPedidos'));
 const ConfirmarPago = lazy(() => import('./pages/ConfirmarPago'));
 const Privacidad = lazy(() => import('./pages/Privacidad'));
 const Terminos = lazy(() => import('./pages/Terminos'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -83,6 +84,7 @@ function AppRoutes() {
           {/* Traveler auth */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/recuperar-contrasena" element={<ResetPassword />} />
           <Route
             path="/mi-cuenta"
             element={
