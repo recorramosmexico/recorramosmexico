@@ -62,6 +62,7 @@ export default function TourDetail() {
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'oxxo' | 'bank_transfer'>('card');
   const [transferReservation, setTransferReservation] = useState<{ id: string; reservationNumber: string | null } | null>(null);
   const [availability, setAvailability] = useState<Record<string, number>>({});
+  const [selectedSupplements, setSelectedSupplements] = useState<number[]>([]);
 
   const { register, handleSubmit, watch, formState: { errors }, reset } = useForm<BookingFormData>({
     defaultValues: { travelers: 1 },
@@ -164,7 +165,8 @@ export default function TourDetail() {
 
     const numTravelers = Number(data.travelers);
     const unitPrice = getEffectivePrice(tour);
-    const totalPrice = unitPrice * numTravelers;
+    const supplementsTotal = selectedSupplements.reduce((sum, idx) => sum + (tour.supplements?.[idx]?.price ?? 0), 0);
+    const totalPrice = (unitPrice + supplementsTotal) * numTravelers;
     const depositPct = tour.deposit_percentage ?? 40;
     const depositAmount = Math.ceil(totalPrice * depositPct / 100);
     const remainingBalance = totalPrice - depositAmount;
@@ -187,6 +189,7 @@ export default function TourDetail() {
         payment_method_type: effectiveMethod,
         confirmation_token: effectiveMethod === 'bank_transfer' ? crypto.randomUUID() : null,
         notes: data.notes || '',
+        selected_supplements: selectedSupplements.map((idx) => tour.supplements?.[idx]).filter(Boolean),
       })
       .select('id')
       .single();
@@ -676,31 +679,86 @@ export default function TourDetail() {
                     </div>
                   </div>
 
-                  {travelers > 0 && (
-                    <div className="space-y-2">
-                      <div className="bg-orange-50 rounded-xl p-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-semibold text-gray-700">{t('tourDetail.bookingForm.total')}</span>
-                          <span className="text-lg font-black text-gray-700 line-through opacity-50">
-                            ${(getEffectivePrice(tour) * travelers).toLocaleString('es-MX')} MXN
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-semibold text-[#E8670A]">
-                            {lang === 'en' ? `Deposit (${tour.deposit_percentage ?? 40}%)` : `Anticipo (${tour.deposit_percentage ?? 40}%)`}
-                          </span>
-                          <span className="text-xl font-black text-[#E8670A]">
-                            ${Math.ceil(getEffectivePrice(tour) * travelers * (tour.deposit_percentage ?? 40) / 100).toLocaleString('es-MX')} MXN
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2 border-t border-orange-100 pt-2">
-                          {lang === 'en'
-                            ? `Remaining balance ${(getEffectivePrice(tour) * travelers - Math.ceil(getEffectivePrice(tour) * travelers * (tour.deposit_percentage ?? 40) / 100)).toLocaleString('es-MX')} MXN paid in cash when boarding.`
-                            : `Saldo restante ${(getEffectivePrice(tour) * travelers - Math.ceil(getEffectivePrice(tour) * travelers * (tour.deposit_percentage ?? 40) / 100)).toLocaleString('es-MX')} MXN se paga en efectivo al abordar.`}
-                        </p>
+                  {tour.supplements && tour.supplements.length > 0 && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-2">
+                        {lang === 'en' ? 'Supplements (optional)' : 'Suplementos (opcional)'}
+                      </label>
+                      <div className="space-y-2">
+                        {tour.supplements.map((sup, idx) => {
+                          const checked = selectedSupplements.includes(idx);
+                          return (
+                            <label
+                              key={idx}
+                              className={`flex items-center justify-between gap-3 px-3 py-2.5 border rounded-xl cursor-pointer transition-all ${checked ? 'border-[#E8670A] bg-orange-50' : 'border-gray-200 hover:border-gray-300'}`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${checked ? 'border-[#E8670A] bg-[#E8670A]' : 'border-gray-300'}`}>
+                                  {checked && <Check size={12} className="text-white" />}
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">{sup.name}</span>
+                              </div>
+                              <span className="text-sm font-bold text-[#E8670A]">
+                                +${sup.price.toLocaleString('es-MX')} MXN
+                              </span>
+                              <input
+                                type="checkbox"
+                                className="sr-only"
+                                checked={checked}
+                                onChange={() => {
+                                  setSelectedSupplements((prev) =>
+                                    prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]
+                                  );
+                                }}
+                              />
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
+
+                  {travelers > 0 && (() => {
+                    const supTotal = selectedSupplements.reduce((sum, idx) => sum + (tour.supplements?.[idx]?.price ?? 0), 0);
+                    const baseTotal = getEffectivePrice(tour) * travelers;
+                    const grandTotal = (getEffectivePrice(tour) + supTotal) * travelers;
+                    const depositAmt = Math.ceil(grandTotal * (tour.deposit_percentage ?? 40) / 100);
+                    return (
+                      <div className="space-y-2">
+                        <div className="bg-orange-50 rounded-xl p-4">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-semibold text-gray-700">{t('tourDetail.bookingForm.total')}</span>
+                            <span className="text-lg font-black text-gray-700 line-through opacity-50">
+                              ${baseTotal.toLocaleString('es-MX')} MXN
+                            </span>
+                          </div>
+                          {supTotal > 0 && (
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs font-medium text-gray-500">
+                                {lang === 'en' ? 'Supplements' : 'Suplementos'}
+                              </span>
+                              <span className="text-xs font-semibold text-gray-600">
+                                +${(supTotal * travelers).toLocaleString('es-MX')} MXN
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-semibold text-[#E8670A]">
+                              {lang === 'en' ? `Deposit (${tour.deposit_percentage ?? 40}%)` : `Anticipo (${tour.deposit_percentage ?? 40}%)`}
+                            </span>
+                            <span className="text-xl font-black text-[#E8670A]">
+                              ${depositAmt.toLocaleString('es-MX')} MXN
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2 border-t border-orange-100 pt-2">
+                            {lang === 'en'
+                              ? `Remaining balance ${(grandTotal - depositAmt).toLocaleString('es-MX')} MXN paid in cash when boarding.`
+                              : `Saldo restante ${(grandTotal - depositAmt).toLocaleString('es-MX')} MXN se paga en efectivo al abordar.`}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Payment method selector */}
                   <div>

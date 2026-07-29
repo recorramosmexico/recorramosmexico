@@ -6,7 +6,7 @@ import {
   ChevronDown, Map, Tag,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import type { Category, Tour } from '../../types';
+import type { Category, Supplement, Tour } from '../../types';
 import RichTextEditor from '../../components/ui/RichTextEditor';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -37,6 +37,8 @@ interface FormData {
   excludes_es: string[];
   // Images
   image_urls: string[];
+  // Supplements
+  supplements: { name: string; price: string }[];
 }
 
 const EMPTY_FORM: FormData = {
@@ -49,6 +51,7 @@ const EMPTY_FORM: FormData = {
   includes_es: [''],
   excludes_es: [''],
   image_urls: [],
+  supplements: [],
 };
 
 const SECTIONS = [
@@ -156,6 +159,7 @@ export default function AdminTours() {
       includes_es: tour.includes_es?.length ? tour.includes_es : [''],
       excludes_es: tour.excludes_es?.length ? tour.excludes_es : [''],
       image_urls: tour.image_urls ?? [],
+      supplements: (tour.supplements ?? []).map((s) => ({ name: s.name, price: String(s.price) })),
     });
     setSection('general');
     setSaveError('');
@@ -227,6 +231,9 @@ export default function AdminTours() {
       excludes_es: form.excludes_es.filter(Boolean),
       excludes_en: form.excludes_es.filter(Boolean),
       image_urls: form.image_urls,
+      supplements: form.supplements
+        .filter((s) => s.name.trim() && parseFloat(s.price) > 0)
+        .map((s) => ({ name: s.name.trim(), price: parseFloat(s.price) || 0 })),
     };
 
     const { error } = editingTour
@@ -546,6 +553,67 @@ export default function AdminTours() {
                       Se cobrarán ${parseFloat(form.presale_price_mxn).toLocaleString('es-MX')} MXN por viajero hasta el {new Date(form.presale_end_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}. Después, ${(parseFloat(form.price_mxn) || 0).toLocaleString('es-MX')} MXN.
                     </p>
                   )}
+                </div>
+              </div>
+            </div>
+
+            {/* Suplementos */}
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
+              <div className="flex items-start gap-3">
+                <Plus size={18} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <label className={labelCls}>Suplementos — opcional</label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Agrega opciones como habitación doble o triple. El precio se suma al costo del tour cuando el viajero lo selecciona.
+                  </p>
+                  <div className="space-y-2">
+                    {form.supplements.map((sup, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={sup.name}
+                          onChange={(e) => {
+                            const next = [...form.supplements];
+                            next[idx] = { ...next[idx], name: e.target.value };
+                            setF({ supplements: next });
+                          }}
+                          placeholder="Ej: Habitación doble"
+                          className={`${inputCls} flex-1`}
+                        />
+                        <div className="relative w-32">
+                          <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="number"
+                            min="0"
+                            value={sup.price}
+                            onChange={(e) => {
+                              const next = [...form.supplements];
+                              next[idx] = { ...next[idx], price: e.target.value };
+                              setF({ supplements: next });
+                            }}
+                            placeholder="0"
+                            className={`${inputCls} pl-8`}
+                          />
+                        </div>
+                        {form.supplements.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setF({ supplements: form.supplements.filter((_, i) => i !== idx) })}
+                            className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors flex-shrink-0"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setF({ supplements: [...form.supplements, { name: '', price: '' }] })}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-[#E8670A] hover:text-[#B8520A] transition-colors mt-1"
+                    >
+                      <Plus size={14} /> Agregar suplemento
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

@@ -15,6 +15,11 @@ export interface ItineraryDay {
   description: string;
 }
 
+export interface Supplement {
+  name: string;
+  price: number;
+}
+
 export interface Tour {
   id: string;
   title_es: string;
@@ -43,6 +48,7 @@ export interface Tour {
   is_active: boolean;
   is_featured: boolean;
   deposit_percentage: number;
+  supplements: Supplement[];
   created_at: string;
   categories?: Category;
 }
