@@ -22,10 +22,23 @@ export default function ResetPassword() {
     noindex: true,
   })
 
-  // Supabase sends the recovery token in the URL hash or query.
-  // The client SDK auto-detects it on load, so we just ensure the session is active.
+  const [recoveryReady, setRecoveryReady] = useState(false)
+
+  // Supabase sends the recovery token in the URL hash.
+  // The client SDK fires a PASSWORD_RECOVERY event once it processes the token.
   useEffect(() => {
-    supabase.auth.getSession()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' && session) {
+        setRecoveryReady(true)
+      }
+    })
+
+    // Also check if a session already exists (e.g. token already processed)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setRecoveryReady(true)
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,6 +86,14 @@ export default function ResetPassword() {
               </div>
               <p className="text-sm text-gray-700 mb-1 font-medium">Contraseña actualizada</p>
               <p className="text-sm text-gray-500">Serás redirigido al inicio de sesión...</p>
+            </div>
+          ) : !recoveryReady ? (
+            <div className="text-center py-8">
+              <svg className="w-8 h-8 animate-spin text-orange-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <p className="text-sm text-gray-500">Verificando enlace de recuperación...</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">

@@ -56,10 +56,15 @@ export default function Login() {
     setLoading(true);
     setError('');
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/recuperar-contrasena`,
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-password-reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
       });
-      if (resetError) throw resetError;
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'No se pudo enviar el correo');
+      }
       setResetSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ocurrió un error');

@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_admin_proof" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_bank_transfer" | "reservation_confirmed" | "inquiry" | "inquiry_reply" | "product_purchase_traveler" | "product_purchase_admin" | "product_bank_transfer" | "product_payment_confirmed" | "product_payment_reminder";
+  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_admin_proof" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_bank_transfer" | "reservation_confirmed" | "inquiry" | "inquiry_reply" | "product_purchase_traveler" | "product_purchase_admin" | "product_bank_transfer" | "product_payment_confirmed" | "product_payment_reminder" | "password_reset";
   to: string;
   data: Record<string, string | number>;
 }
@@ -523,6 +523,25 @@ Confirmar reserva: ${confirmUrl}`),
         subject,
         html_body: buildHtml("Recordatorio de Pago — Pedido", body, logoUrl),
         text_body: buildText(subject, `Hola ${d.customer_name},\n\nTienes un pedido pendiente de pago. Si no completas el pago en ${d.hours_remaining} horas, el pedido será cancelado automáticamente.\n\nProducto: ${d.product_title}\nCantidad: ${d.quantity}${d.size ? `\nTalla: ${d.size}` : ""}\nTotal: ${d.total} MXN\n\nSube tu comprobante de pago o contáctanos por WhatsApp.`),
+      };
+    }
+
+    case "password_reset": {
+      const resetUrl = String(data.reset_url);
+      const subject = "Restablece tu contraseña — Recorramos México";
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Hola,
+        </p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Recibimos una solicitud para restablecer la contraseña de tu cuenta en <strong>Recorramos México</strong>. Haz clic en el botón de abajo para elegir una nueva contraseña:
+        </p>
+        <a href="${resetUrl}" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Restablecer mi contraseña</a>
+        <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:20px 0 0;">Si no puedes hacer clic en el botón, copia y pega este enlace en tu navegador:<br><a href="${resetUrl}" style="color:#E8670A;word-break:break-all;">${resetUrl}</a></p>
+        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">Si no solicitaste este cambio, puedes ignorar este correo. Tu contraseña no será modificada.</p>`;
+      return {
+        subject,
+        html_body: buildHtml("Restablece tu contraseña", body, logoUrl),
+        text_body: buildText(subject, `Recibimos una solicitud para restablecer la contraseña de tu cuenta en Recorramos México.\n\nCopia y pega este enlace en tu navegador para elegir una nueva contraseña:\n${resetUrl}\n\nSi no solicitaste este cambio, puedes ignorar este correo.`),
       };
     }
   }
