@@ -886,7 +886,7 @@ export default function MiCuenta() {
                   const isOrderExpired = order.payment_status === 'pending' && orderElapsed >= EXPIRY_HOURS;
                   const isOrderPendingPayable = order.payment_status === 'pending' && orderElapsed < EXPIRY_HOURS;
                   const orderExpiryProgress = Math.min(100, (orderElapsed / EXPIRY_HOURS) * 100);
-                  const orderRemaining = timeRemaining(order.created_at);
+                  const orderRemaining = hoursRemaining(order.created_at);
                   const orderStatusKey = isOrderExpired ? 'expired' : order.payment_status;
                   const status = PRODUCT_STATUS_CONFIG[orderStatusKey] ?? PRODUCT_STATUS_CONFIG.pending;
                   const title = order.products ? (lang === 'en' ? order.products.title_en : order.products.title_es) : 'Producto';
