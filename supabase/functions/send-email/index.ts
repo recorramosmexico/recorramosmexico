@@ -461,7 +461,7 @@ Confirmar reserva: ${confirmUrl}`),
     }
 
     case "product_purchase_admin": {
-      const d = data as { product_title: string; quantity: string; size: string; total: string; order_number: string; customer_name: string; email: string; delivery_method: string; payment_method: string };
+      const d = data as { product_title: string; description: string; quantity: string; size: string; total: string; order_number: string; customer_name: string; email: string; delivery_method: string; payment_method: string };
       const subject = `Nueva compra de producto — ${d.order_number}`;
       const deliveryLabel = d.delivery_method === "shipping" ? "Envío" : "Entrega personal CDMX";
       const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">Se ha registrado una nueva compra en la tienda de productos.</p>
@@ -480,7 +480,7 @@ Confirmar reserva: ${confirmUrl}`),
       return {
         subject,
         html_body: buildHtml("Nueva Compra de Producto", body, logoUrl),
-        text_body: buildText(subject, `Nueva compra de producto.\n\nOrden: ${d.order_number}\nProducto: ${d.product_title}\nCantidad: ${d.quantity}${d.size ? `\nTalla: ${d.size}` : ""}\nTotal: ${d.total} MXN\nCliente: ${d.customer_name}\nEmail: ${d.email}\nEntrega: ${deliveryLabel}\nPago: ${d.payment_method}\n\nRevisa en el panel de administración → Pedidos Productos.`),
+        text_body: buildText(subject, `Nueva compra de producto.\n\nOrden: ${d.order_number}\nProducto: ${d.product_title}${d.description ? `\nDescripción: ${d.description}` : ""}\nCantidad: ${d.quantity}${d.size ? `\nTalla: ${d.size}` : ""}\nTotal: ${d.total} MXN\nCliente: ${d.customer_name}\nEmail: ${d.email}\nEntrega: ${deliveryLabel}\nPago: ${d.payment_method}\n\nRevisa en el panel de administración → Pedidos Productos.`),
       };
     }
 

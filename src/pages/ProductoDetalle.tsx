@@ -168,6 +168,7 @@ export default function ProductoDetalle() {
             to: 'contacto@recorramosmexico.com.mx',
             data: {
               product_title: title,
+              description: description ?? '',
               quantity: String(quantity),
               size: selectedSize,
               total: String(total),
@@ -209,6 +210,7 @@ export default function ProductoDetalle() {
             to: 'contacto@recorramosmexico.com.mx',
             data: {
               product_title: title,
+              description: description ?? '',
               quantity: String(quantity),
               size: selectedSize,
               total: String(total),
