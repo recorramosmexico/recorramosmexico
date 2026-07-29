@@ -6,6 +6,7 @@ import WhatsAppButton from './components/layout/WhatsAppButton';
 import LoadingScreen from './components/layout/LoadingScreen';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { AdminProtectedRoute } from './components/auth/AdminProtectedRoute';
+import { AuthProvider } from './hooks/useAuth';
 
 const Home = lazy(() => import('./pages/Home'));
 const Tours = lazy(() => import('./pages/Tours'));
@@ -128,7 +129,9 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <AppRoutes />
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
     </BrowserRouter>
   );
 }
