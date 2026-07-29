@@ -7,6 +7,7 @@ const en = {
     services: 'Services',
     products: 'Products',
     blog: 'Blog',
+    reviews: 'Reviews',
     contact: 'Contact',
   },
   home: {

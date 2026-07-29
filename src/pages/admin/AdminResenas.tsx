@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, X, Trash2, Plus, CreditCard as Edit2, Star } from 'lucide-react';
+import { Check, X, Trash2, Plus, CreditCard as Edit2, Star, Mail, Phone } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Review, Tour } from '../../types';
 import StarRating from '../../components/ui/StarRating';
@@ -192,6 +192,22 @@ export default function AdminResenas() {
                     </span>
                   </div>
                   <p className="text-gray-600 text-sm leading-relaxed ml-12">"{review.comment_es}"</p>
+                  {(review.email || review.phone) && (
+                    <div className="ml-12 mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-4">
+                      {review.email && (
+                        <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                          <Mail size={12} className="text-gray-400" />
+                          {review.email}
+                        </span>
+                      )}
+                      {review.phone && (
+                        <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                          <Phone size={12} className="text-gray-400" />
+                          {review.phone}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 flex-shrink-0">

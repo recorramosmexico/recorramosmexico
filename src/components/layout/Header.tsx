@@ -40,6 +40,7 @@ export default function Header() {
     { path: '/servicios', label: t('nav.services') },
     ...(productsEnabled ? [{ path: '/productos', label: t('nav.products') }] : []),
     { path: '/blog', label: t('nav.blog') },
+    { path: '/resenas', label: t('nav.reviews') },
     { path: '/contacto', label: t('nav.contact') },
   ];
 

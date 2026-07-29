@@ -67,6 +67,7 @@ export interface Reservation {
   payment_method_type: string | null;
   payment_proof_url: string | null;
   reservation_number: string | null;
+  review_request_sent_at: string | null;
   created_at: string;
   tours?: Tour;
 }
@@ -80,6 +81,9 @@ export interface Review {
   comment_en: string;
   is_approved: boolean;
   created_at: string;
+  user_id: string | null;
+  email: string | null;
+  phone: string | null;
   tours?: Tour;
 }
 

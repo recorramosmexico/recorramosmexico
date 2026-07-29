@@ -7,6 +7,7 @@ const es = {
     services: 'Servicios',
     products: 'Productos',
     blog: 'Blog',
+    reviews: 'Reseñas',
     contact: 'Contacto',
   },
   home: {

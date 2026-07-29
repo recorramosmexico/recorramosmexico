@@ -16,6 +16,7 @@ const Nosotros = lazy(() => import('./pages/Nosotros'));
 const Servicios = lazy(() => import('./pages/Servicios'));
 const Blog = lazy(() => import('./pages/Blog'));
 const BlogPost = lazy(() => import('./pages/BlogPost'));
+const Resenas = lazy(() => import('./pages/Resenas'));
 const Contacto = lazy(() => import('./pages/Contacto'));
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
@@ -74,6 +75,7 @@ function AppRoutes() {
           <Route path="/productos/:slug" element={<ProductoDetalle />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
+          <Route path="/resenas" element={<Resenas />} />
           <Route path="/contacto" element={<Contacto />} />
           <Route path="/success" element={<Success />} />
           <Route path="/cancel" element={<Cancel />} />

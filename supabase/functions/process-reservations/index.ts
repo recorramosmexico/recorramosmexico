@@ -163,12 +163,66 @@ Deno.serve(async (req: Request) => {
       console.log(`Sent ${toRemindOrders.length} product order reminder emails`);
     }
 
+    // ── 3. Send review request emails for completed tours ──────────────────────────
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: completedRes, error: reviewQueryError } = await supabase
+      .from('reservations')
+      .select('id, email, customer_name, departure_date, tours(title_es)')
+      .in('payment_status', ['confirmed', 'deposit_paid', 'paid'])
+      .is('review_request_sent_at', null)
+      .lt('departure_date', yesterday);
+
+    if (reviewQueryError) {
+      console.error('Review request query error:', reviewQueryError.message);
+    } else if (completedRes && completedRes.length > 0) {
+      const sendEmailUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`;
+      const reviewsUrl = `${Deno.env.get('SUPABASE_URL').replace('.supabase.co', '')}`.includes('recorramos')
+        ? 'https://recorramosmexico.com.mx/resenas'
+        : '/resenas';
+
+      for (const res of completedRes) {
+        const tourTitle = (res.tours as { title_es: string } | null)?.title_es ?? 'Tu tour';
+        const customerEmail = res.email;
+        if (!customerEmail) continue;
+
+        try {
+          await fetch(sendEmailUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+            },
+            body: JSON.stringify({
+              type: 'review_request',
+              to: customerEmail,
+              data: {
+                customer_name: res.customer_name,
+                tour_title: tourTitle,
+                reviews_url: 'https://recorramosmexico.com.mx/resenas',
+              },
+            }),
+          });
+
+          await supabase
+            .from('reservations')
+            .update({ review_request_sent_at: now.toISOString() })
+            .eq('id', res.id);
+        } catch (emailErr) {
+          console.error(`Failed to send review request for reservation ${res.id}:`, emailErr);
+        }
+      }
+
+      console.log(`Sent ${completedRes.length} review request emails`);
+    }
+
     return new Response(
       JSON.stringify({
         cancelled_reservations: cancelledRes?.length ?? 0,
         cancelled_product_orders: cancelledOrders?.length ?? 0,
         reservation_reminders_sent: toRemindRes?.length ?? 0,
         product_order_reminders_sent: toRemindOrders?.length ?? 0,
+        review_requests_sent: completedRes?.length ?? 0,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );

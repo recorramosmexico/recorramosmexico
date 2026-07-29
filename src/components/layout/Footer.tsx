@@ -11,6 +11,7 @@ export default function Footer() {
     { path: '/nosotros', label: t('nav.about') },
     { path: '/servicios', label: t('nav.services') },
     { path: '/blog', label: t('nav.blog') },
+    { path: '/resenas', label: t('nav.reviews') },
     { path: '/contacto', label: t('nav.contact') },
   ];
 

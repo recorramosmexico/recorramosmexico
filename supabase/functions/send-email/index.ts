@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_admin_proof" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_bank_transfer" | "reservation_confirmed" | "inquiry" | "inquiry_reply" | "product_purchase_traveler" | "product_purchase_admin" | "product_bank_transfer" | "product_payment_confirmed" | "product_payment_reminder" | "password_reset";
+  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_admin_proof" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_bank_transfer" | "reservation_confirmed" | "inquiry" | "inquiry_reply" | "product_purchase_traveler" | "product_purchase_admin" | "product_bank_transfer" | "product_payment_confirmed" | "product_payment_reminder" | "password_reset" | "review_request";
   to: string;
   data: Record<string, string | number>;
 }
@@ -542,6 +542,29 @@ Confirmar reserva: ${confirmUrl}`),
         subject,
         html_body: buildHtml("Restablece tu contraseña", body, logoUrl),
         text_body: buildText(subject, `Recibimos una solicitud para restablecer la contraseña de tu cuenta en Recorramos México.\n\nCopia y pega este enlace en tu navegador para elegir una nueva contraseña:\n${resetUrl}\n\nSi no solicitaste este cambio, puedes ignorar este correo.`),
+      };
+    }
+    case "review_request": {
+      const customerName = String(data.customer_name);
+      const tourTitle = String(data.tour_title);
+      const reviewsUrl = String(data.reviews_url);
+      const subject = `¿Cómo estuvo tu tour "${tourTitle}"? — Recorramos México`;
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          ¡Hola ${customerName}!
+        </p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Esperamos que hayas disfrutado tu experiencia en <strong>${tourTitle}</strong> con Recorramos México. Nos encantaría conocer tu opinión sobre el servicio y la aventura que viviste.
+        </p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
+          Tu reseña es muy importante para nosotros y ayuda a otros viajeros a decidir su próxima aventura. Califica del 1 al 5 estrellas y comparte tu experiencia en solo un par de minutos.
+        </p>
+        <a href="${reviewsUrl}" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Dejar mi reseña</a>
+        <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:20px 0 0;">Si no puedes hacer clic en el botón, copia y pega este enlace en tu navegador:<br><a href="${reviewsUrl}" style="color:#E8670A;word-break:break-all;">${reviewsUrl}</a></p>
+        <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">¡Gracias por viajar con Recorramos México!</p>`;
+      return {
+        subject,
+        html_body: buildHtml("Cuéntanos tu experiencia", body, logoUrl),
+        text_body: buildText(subject, `¡Hola ${customerName}!\n\nEsperamos que hayas disfrutado tu experiencia en ${tourTitle} con Recorramos México. Nos encantaría conocer tu opinión sobre el servicio y la aventura que viviste.\n\nTu reseña es muy importante para nosotros y ayuda a otros viajeros a decidir su próxima aventura. Califica del 1 al 5 estrellas y comparte tu experiencia en solo un par de minutos.\n\nDeja tu reseña aquí:\n${reviewsUrl}\n\n¡Gracias por viajar con Recorramos México!`),
       };
     }
   }
