@@ -62,7 +62,7 @@ export default function Home() {
   useSEO({
     title: 'Recorramos México | Tours Nacionales e Internacionales en Grupo',
     description:
-      'Agencia de viajes en grupo desde el Estado de México. Tours nacionales e internacionales: playas, festivales, ferias, aventura y más. ¡Reserva tu próxima aventura!',
+      'Agencia de viajes con recorridos nacionales e internacionales. Brindamos asesoría para viajes personalizados, grupales, empresariales, graduaciones, despedidas de solteros, cruceros, etc. ¡Reserva tu próxima aventura!',
     path: '/',
     image: '/Logo_Bandera.jpg',
     jsonLd,
