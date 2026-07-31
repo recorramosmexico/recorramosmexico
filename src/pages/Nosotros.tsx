@@ -187,16 +187,16 @@ export default function Nosotros() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
               {
-                name: 'Titi Tours',
-                logo: '/images/partners/tititours.jpeg',
-                href: null,
-                description: 'Partner comercial.',
-              },
-              {
                 name: 'MegaTravel',
                 logo: '/images/partners/mega-travel.jpg',
                 href: 'https://viaje.ly/recorramos-mexico',
                 description: 'Mayorista turístico con amplia red de servicios en México y el mundo.',
+              },
+              {
+                name: 'Titi Tours',
+                logo: '/images/partners/tititours.jpeg',
+                href: null,
+                description: 'Partner comercial.',
               },
               {
                 name: 'PriceAgencies',
