@@ -204,6 +204,12 @@ export default function Nosotros() {
                 href: null,
                 description: 'Herramienta de cotización y gestión para agencias de viaje.',
               },
+              {
+                name: 'ToursRed',
+                logo: '/images/partners/toursred.jpg',
+                href: null,
+                description: 'Market Place Tours',
+              },
             ].map((partner) => {
               const card = (
                 <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-[#E8670A]/30 transition-all duration-300 flex flex-col items-center text-center h-full min-h-[260px]">
