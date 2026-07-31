@@ -187,10 +187,10 @@ export default function Nosotros() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
               {
-                name: 'ToursRed',
-                logo: '/images/partners/Logo_Transparente.jpg',
-                href: 'https://toursredmx.netlify.app/agencies/recorramosmexico',
-                description: 'Plataforma de distribución de tours para agencias de viaje.',
+                name: 'Titi Tours',
+                logo: '/images/partners/tititours.jpeg',
+                href: null,
+                description: 'Partner comercial.',
               },
               {
                 name: 'MegaTravel',
