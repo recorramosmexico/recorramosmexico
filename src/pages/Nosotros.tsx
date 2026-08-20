@@ -3,12 +3,18 @@ import { Shield, Users, Heart, Globe } from 'lucide-react';
 import { useSEO } from '../hooks/useSEO';
 import { organizationSchema } from '../lib/structuredData';
 
-const TEAM = [
+const TEAM_LINE_1 = [
   { name: 'Trinidad Gil Martinez', role: 'Coordinador', img: '/images/team/TrinidadGilMartinez.jpeg' },
   { name: 'Erasmo Gil Martinez', role: 'Coordinador', img: '/images/team/ErasmoGilMartinez.jpeg' },
   { name: 'Nancy Martínez Carrillo', role: 'Coordinadora', img: '/images/team/NancyMartinez.jpeg' },
   { name: 'Alan Axel Alvarez Hernandez', role: 'Página Web', img: '/images/team/AlanAxelAlvarez.jpg' },
   { name: 'Jhosua Gallardo Morales', role: 'Marketing Digital', img: '/images/team/JoshuaGallardo.jpeg' },
+];
+
+const TEAM_LINE_2 = [
+  { name: 'Ximena Yoselin Galán', role: 'Asesora de viajes', img: '/images/team/XimenaYoselinGalan.jpeg' },
+  { name: 'Francisco José Ibarlucea', role: 'Guía de Turistas', img: '/images/team/FranciscoJoseIbarlucea.jpeg' },
+  { name: 'Diana Yadira Ramírez', role: 'Guía de Turistas', img: '/images/team/DianaYadiraRamirez.jpeg' },
 ];
 
 export default function Nosotros() {
@@ -260,7 +266,22 @@ export default function Nosotros() {
             <p className="text-gray-500 mt-2">{t('about.team.subtitle')}</p>
           </div>
           <div className="flex flex-wrap justify-center gap-6">
-            {TEAM.map((member) => (
+            {TEAM_LINE_1.map((member) => (
+              <div key={member.name} className="text-center group w-40 md:w-44">
+                <div className="relative mb-4 inline-block">
+                  <img
+                    src={member.img}
+                    alt={member.name}
+                    className="w-24 h-24 md:w-32 md:h-32 rounded-full mx-auto object-cover border-4 border-white shadow-md group-hover:border-[#E8670A] transition-colors duration-300"
+                  />
+                </div>
+                <h3 className="font-bold text-gray-900 text-sm md:text-base">{member.name}</h3>
+                <p className="text-[#E8670A] text-xs font-medium mt-0.5">{member.role}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap justify-center gap-6 mt-6">
+            {TEAM_LINE_2.map((member) => (
               <div key={member.name} className="text-center group w-40 md:w-44">
                 <div className="relative mb-4 inline-block">
                   <img
