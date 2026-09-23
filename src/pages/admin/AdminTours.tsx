@@ -25,6 +25,7 @@ interface FormData {
   description_es: string;
   // Logistics
   price_mxn: string;
+  price_increase_mxn: string;
   presale_price_mxn: string;
   presale_end_date: string;
   duration_days: string;
@@ -45,7 +46,7 @@ const EMPTY_FORM: FormData = {
   title_es: '', slug: '', category_id: '', destination: '',
   difficulty: 'medium', meeting_point: 'Monumento a la Revolución', is_active: true, is_featured: false,
   description_es: '',
-  price_mxn: '', presale_price_mxn: '', presale_end_date: '', duration_days: '', min_participants: '1', max_capacity: '20',
+  price_mxn: '', price_increase_mxn: '', presale_price_mxn: '', presale_end_date: '', duration_days: '', min_participants: '1', max_capacity: '20',
   deposit_percentage: '40',
   departure_dates: [],
   includes_es: [''],
@@ -149,6 +150,7 @@ export default function AdminTours() {
       is_featured: tour.is_featured,
       description_es: tour.description_es,
       price_mxn: String(tour.price_mxn),
+      price_increase_mxn: tour.presale_price_mxn != null ? String(Math.max(0, tour.price_mxn - tour.presale_price_mxn)) : '',
       presale_price_mxn: tour.presale_price_mxn != null ? String(tour.presale_price_mxn) : '',
       presale_end_date: tour.presale_end_date ?? '',
       duration_days: String(tour.duration_days),
@@ -440,16 +442,81 @@ export default function AdminTours() {
           <div className="space-y-5">
             {sectionTitle('Logística', 'Precio, duración y disponibilidad')}
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <label className={labelCls}>Precio (MXN)</label>
-                <div className="relative">
-                  <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="number" min="0" value={form.price_mxn}
-                    onChange={(e) => setF({ price_mxn: e.target.value })}
-                    placeholder="0" className={`${inputCls} pl-8`} />
+            {/* Preventa y precio normal */}
+            <div className="bg-green-50 border border-green-100 rounded-2xl p-5">
+              <div className="flex items-start gap-3">
+                <Tag size={18} className="text-green-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <label className={labelCls}>Precio de preventa (MXN) — opcional</label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Captura primero el precio de preventa. Después indica cuánto sube el precio normal y el cálculo se hace automático.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-gray-500 font-medium">Precio de preventa</label>
+                      <div className="relative">
+                        <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input type="number" min="0" value={form.presale_price_mxn}
+                          onChange={(e) => {
+                            const presale = e.target.value;
+                            const inc = parseFloat(form.price_increase_mxn) || 0;
+                            const calculated = presale ? String(Math.max(0, (parseFloat(presale) || 0) + inc)) : '';
+                            setF({ presale_price_mxn: presale, price_mxn: calculated });
+                          }}
+                          placeholder="Ej: 1799" className={`${inputCls} pl-8`} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 font-medium">Fecha límite de preventa</label>
+                      <input type="date" value={form.presale_end_date}
+                        onChange={(e) => setF({ presale_end_date: e.target.value })}
+                        className={inputCls} />
+                    </div>
+                  </div>
+
+                  {/* Aumento y precio normal */}
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-gray-500 font-medium">Sube (MXN)</label>
+                      <div className="relative">
+                        <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input type="number" min="0" value={form.price_increase_mxn}
+                          onChange={(e) => {
+                            const inc = e.target.value;
+                            const presale = parseFloat(form.presale_price_mxn) || 0;
+                            const calculated = (presale + (parseFloat(inc) || 0)) || '';
+                            setF({ price_increase_mxn: inc, price_mxn: calculated ? String(calculated) : '' });
+                          }}
+                          placeholder="Ej: 300" className={`${inputCls} pl-8`} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 font-medium">Precio normal (MXN) *</label>
+                      <div className="relative">
+                        <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input type="number" min="0" value={form.price_mxn}
+                          onChange={(e) => setF({ price_mxn: e.target.value })}
+                          placeholder="Ej: 2099" className={`${inputCls} pl-8`} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {form.presale_price_mxn && form.presale_end_date && (
+                    <p className="text-xs text-green-700 mt-3 font-medium">
+                      Se cobrarán ${parseFloat(form.presale_price_mxn).toLocaleString('es-MX')} MXN por viajero hasta el {new Date(form.presale_end_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}. Después, ${(parseFloat(form.price_mxn) || 0).toLocaleString('es-MX')} MXN.
+                    </p>
+                  )}
+                  {form.presale_price_mxn && form.price_mxn && (parseFloat(form.price_mxn) || 0) < (parseFloat(form.presale_price_mxn) || 0) && (
+                    <p className="text-xs text-red-600 mt-2 font-medium">
+                      El precio normal no puede ser menor al precio de preventa.
+                    </p>
+                  )}
                 </div>
               </div>
+            </div>
+
+            {/* Resto de logística */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <label className={labelCls}>Duración (días)</label>
                 <div className="relative">
@@ -519,41 +586,6 @@ export default function AdminTours() {
                     <p className="text-xs text-gray-400">anticipo</p>
                   </div>
                 )}
-              </div>
-            </div>
-
-            {/* Presale price */}
-            <div className="bg-green-50 border border-green-100 rounded-2xl p-5">
-              <div className="flex items-start gap-3">
-                <Tag size={18} className="text-green-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <label className={labelCls}>Precio de preventa (MXN) — opcional</label>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Si configuras un precio de preventa y una fecha límite, se cobrará ese precio hasta la fecha indicada. Después se cobra el precio normal.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-gray-500 font-medium">Precio preventa</label>
-                      <div className="relative">
-                        <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input type="number" min="0" value={form.presale_price_mxn}
-                          onChange={(e) => setF({ presale_price_mxn: e.target.value })}
-                          placeholder="Ej: 3500" className={`${inputCls} pl-8`} />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 font-medium">Fecha límite de preventa</label>
-                      <input type="date" value={form.presale_end_date}
-                        onChange={(e) => setF({ presale_end_date: e.target.value })}
-                        className={inputCls} />
-                    </div>
-                  </div>
-                  {form.presale_price_mxn && form.presale_end_date && (
-                    <p className="text-xs text-green-700 mt-3 font-medium">
-                      Se cobrarán ${parseFloat(form.presale_price_mxn).toLocaleString('es-MX')} MXN por viajero hasta el {new Date(form.presale_end_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}. Después, ${(parseFloat(form.price_mxn) || 0).toLocaleString('es-MX')} MXN.
-                    </p>
-                  )}
-                </div>
               </div>
             </div>
 
