@@ -40,11 +40,20 @@ export default function Home() {
     const loadData = async () => {
       const today = getMexicoCityDateString();
       const [toursRes, reviewsRes, catsRes] = await Promise.all([
-        supabase.from('tours').select('*').eq('is_active', true).eq('is_featured', true).limit(6),
+        supabase.from('tours').select('*').eq('is_active', true).order('created_at', { ascending: false }),
         supabase.from('reviews').select('*').eq('is_approved', true).limit(6),
         supabase.from('categories').select('*').order('name_es').limit(8),
       ]);
-      if (toursRes.data) setFeaturedTours(toursRes.data.filter((t) => (t.departure_dates ?? []).some((d) => d >= today)));
+      if (toursRes.data) {
+        const withDates = toursRes.data.filter((t) => (t.departure_dates ?? []).some((d) => d >= today));
+        withDates.sort((a, b) => {
+          const da = (a.departure_dates ?? []).filter((d) => d >= today).sort()[0] ?? '9999';
+          const db = (b.departure_dates ?? []).filter((d) => d >= today).sort()[0] ?? '9999';
+          return da.localeCompare(db);
+        });
+        const withoutDates = toursRes.data.filter((t) => !t.departure_dates || t.departure_dates.length === 0);
+        setFeaturedTours([...withDates, ...withoutDates].slice(0, 6));
+      }
       if (reviewsRes.data) setReviews(reviewsRes.data);
       if (catsRes.data) setCategories(catsRes.data);
       setLoading(false);
