@@ -43,7 +43,7 @@ interface FormData {
 
 const EMPTY_FORM: FormData = {
   title_es: '', slug: '', category_id: '', destination: '',
-  difficulty: 'medium', meeting_point: '', is_active: true, is_featured: false,
+  difficulty: 'medium', meeting_point: 'Monumento a la Revolución', is_active: true, is_featured: false,
   description_es: '',
   price_mxn: '', presale_price_mxn: '', presale_end_date: '', duration_days: '', min_participants: '1', max_capacity: '20',
   deposit_percentage: '40',
