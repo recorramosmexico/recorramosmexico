@@ -963,6 +963,19 @@ export default function AdminTours() {
 
             {/* Footer */}
             <div className="flex items-center justify-between px-6 py-4 bg-white border-t border-gray-100 flex-shrink-0">
+              {/* Save */}
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center gap-2 px-7 py-2.5 bg-[#E8670A] text-white font-bold rounded-xl hover:bg-[#B8520A] transition-colors disabled:opacity-50 shadow-sm shadow-[#E8670A]/20"
+              >
+                {saving ? (
+                  <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Check size={16} />
+                )}
+                {saving ? 'Guardando...' : editingTour ? 'Actualizar tour' : 'Crear tour'}
+              </button>
               {/* Section prev/next */}
               <div className="flex gap-2">
                 {SECTIONS.findIndex((s) => s.id === section) > 0 && (
@@ -982,19 +995,6 @@ export default function AdminTours() {
                   </button>
                 )}
               </div>
-              {/* Save */}
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-2 px-7 py-2.5 bg-[#E8670A] text-white font-bold rounded-xl hover:bg-[#B8520A] transition-colors disabled:opacity-50 shadow-sm shadow-[#E8670A]/20"
-              >
-                {saving ? (
-                  <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Check size={16} />
-                )}
-                {saving ? 'Guardando...' : editingTour ? 'Actualizar tour' : 'Crear tour'}
-              </button>
             </div>
           </div>
         </div>
