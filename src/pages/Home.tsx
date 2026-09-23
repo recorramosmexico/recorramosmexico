@@ -52,7 +52,7 @@ export default function Home() {
           return da.localeCompare(db);
         });
         const withoutDates = toursRes.data.filter((t) => !t.departure_dates || t.departure_dates.length === 0);
-        setFeaturedTours([...withDates, ...withoutDates].slice(0, 6));
+        setFeaturedTours([...withDates, ...withoutDates].slice(0, 9));
       }
       if (reviewsRes.data) setReviews(reviewsRes.data);
       if (catsRes.data) setCategories(catsRes.data);
@@ -153,7 +153,7 @@ export default function Home() {
 
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
+              {[...Array(9)].map((_, i) => (
                 <div key={i} className="bg-gray-100 rounded-2xl h-72 animate-pulse" />
               ))}
             </div>
