@@ -158,18 +158,6 @@ export default function TourDetail() {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('phone')
-      .eq('id', user.id)
-      .maybeSingle();
-    const profilePhone = profile?.phone?.trim() || '';
-    if (!profilePhone) {
-      navigate('/mi-cuenta?complete=phone');
-      return;
-    }
-    data.phone = profilePhone;
-
     const effectiveMethod = method ?? paymentMethod;
 
     setSubmitting(true);

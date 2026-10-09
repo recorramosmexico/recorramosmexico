@@ -38,12 +38,14 @@ export default function Login() {
     } else {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('is_admin')
+        .select('is_admin, phone')
         .eq('id', data.user!.id)
         .maybeSingle();
 
       if (profile?.is_admin) {
         navigate('/admin/dashboard');
+      } else if (!profile?.phone?.trim()) {
+        navigate('/mi-cuenta?complete=phone');
       } else {
         navigate(redirectTo);
       }
