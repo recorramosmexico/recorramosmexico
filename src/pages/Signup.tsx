@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, User, MapPin } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, MapPin, Phone } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { OAuthSection } from '../components/auth/OAuthSection';
 import { sendEmail } from '../lib/email';
@@ -10,6 +10,7 @@ export default function Signup() {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -27,6 +28,10 @@ export default function Signup() {
     e.preventDefault();
     setError('');
 
+    if (!phone.trim()) {
+      setError('El teléfono es obligatorio para poder contactarte sobre tus tours.');
+      return;
+    }
     if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden.');
       return;
@@ -38,15 +43,28 @@ export default function Signup() {
 
     setLoading(true);
 
-    const { error: authError } = await supabase.auth.signUp({
+    const { data, error: authError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: { data: { full_name: fullName.trim(), phone: phone.trim() } },
     });
 
     if (authError) {
       setError(authError.message);
     } else {
+      if (data.user) {
+        const { error: profileError } = await supabase.from('profiles').upsert({
+          id: data.user.id,
+          full_name: fullName.trim(),
+          phone: phone.trim(),
+          email,
+        });
+        if (profileError) {
+          setError('No pudimos guardar tu teléfono. Intenta registrarte nuevamente.');
+          setLoading(false);
+          return;
+        }
+      }
       sendEmail('welcome', email, { name: fullName || email, email });
       navigate('/mi-cuenta');
     }
@@ -100,6 +118,25 @@ export default function Signup() {
                   placeholder="tu@correo.com"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                Teléfono <span className="text-[#E8670A]">*</span>
+              </label>
+              <div className="relative">
+                <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="tel"
+                  required
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8670A]/30 focus:border-[#E8670A]"
+                  placeholder="+52 55 1234 5678"
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Lo usaremos para enviarte detalles importantes de tu tour.</p>
             </div>
 
             <div>

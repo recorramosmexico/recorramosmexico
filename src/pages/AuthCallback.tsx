@@ -33,6 +33,7 @@ export default function AuthCallback() {
           const user = session.user
           const isGoogle = user.app_metadata?.provider === 'google'
 
+          let needsPhone = false
           if (isGoogle) {
             const meta = user.user_metadata || {}
             const fullName: string = meta.full_name || meta.name || ''
@@ -44,10 +45,12 @@ export default function AuthCallback() {
               .eq('id', user.id)
               .maybeSingle()
 
+            const savedPhone = existing?.phone || phone
+            needsPhone = !savedPhone.trim()
             await supabase.from('profiles').upsert({
               id: user.id,
               full_name: existing?.full_name || fullName || null,
-              phone: existing?.phone || phone || null,
+              phone: savedPhone || null,
               email: user.email || null,
             })
 
@@ -59,7 +62,7 @@ export default function AuthCallback() {
             }
           }
 
-          navigate('/mi-cuenta', { replace: true })
+          navigate(needsPhone ? '/mi-cuenta?complete=phone' : '/mi-cuenta', { replace: true })
         })()
       } else if (event === 'SIGNED_OUT') {
         subscription.unsubscribe()
@@ -67,10 +70,15 @@ export default function AuthCallback() {
       }
     })
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
         subscription.unsubscribe()
-        navigate('/mi-cuenta', { replace: true })
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('phone')
+          .eq('id', session.user.id)
+          .maybeSingle()
+        navigate(profile?.phone?.trim() ? '/mi-cuenta' : '/mi-cuenta?complete=phone', { replace: true })
       }
     })
 

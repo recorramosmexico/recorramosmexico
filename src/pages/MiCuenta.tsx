@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   CalendarDays, MapPin, Users, CreditCard, LogOut, Clock, User, Phone,
@@ -89,6 +89,7 @@ export default function MiCuenta() {
   const lang = i18n.language === 'en' ? 'en' : 'es';
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useSEO({
     title: 'Mi Cuenta',
@@ -97,7 +98,7 @@ export default function MiCuenta() {
     noindex: true,
   });
 
-  const [activeTab, setActiveTab] = useState<Tab>('reservations');
+  const [activeTab, setActiveTab] = useState<Tab>(searchParams.get('complete') === 'phone' ? 'profile' : 'reservations');
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loadingRes, setLoadingRes] = useState(true);
   const [refreshingRes, setRefreshingRes] = useState(false);
@@ -209,11 +210,16 @@ export default function MiCuenta() {
           birth_date: data?.birth_date || '',
           sex: data?.sex || '',
         });
+        if (!data?.phone?.trim()) setActiveTab('profile');
       });
   }, [user]);
 
   const handleSaveProfile = async () => {
     if (!user) return;
+    if (!profile.phone.trim()) {
+      setProfileError(lang === 'en' ? 'Phone number is required to book a tour.' : 'El teléfono es obligatorio para reservar un tour.');
+      return;
+    }
     setSavingProfile(true);
     setProfileError('');
     setProfileSaved(false);
@@ -1123,6 +1129,12 @@ export default function MiCuenta() {
                 ? 'This information is used to pre-fill your reservation forms.'
                 : 'Esta información se usa para prellenar tus formularios de reserva.'}
             </p>
+            {!profile.phone.trim() && (
+              <div className="mb-6 flex items-start gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
+                <Phone size={18} className="mt-0.5 flex-shrink-0 text-[#E8670A]" />
+                <p>{lang === 'en' ? 'Add your phone number before booking so we can contact you with important tour details.' : 'Agrega tu teléfono antes de reservar para poder contactarte con detalles importantes de tu tour.'}</p>
+              </div>
+            )}
 
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 space-y-6">
               <div>
@@ -1162,12 +1174,13 @@ export default function MiCuenta() {
 
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  {lang === 'en' ? 'Phone' : 'Teléfono'}
+                  {lang === 'en' ? 'Phone' : 'Teléfono'} <span className="text-[#E8670A]">*</span>
                 </label>
                 <div className="relative">
                   <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type="tel"
+                    required
                     value={profile.phone}
                     onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                     placeholder="+52 55 1234 5678"
