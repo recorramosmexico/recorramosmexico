@@ -1174,7 +1174,7 @@ export default function MiCuenta() {
 
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  {lang === 'en' ? 'Phone' : 'Teléfono'} <span className="text-[#E8670A]">*</span>
+                  {lang === 'en' ? 'Phone' : 'Teléfono'}
                 </label>
                 <div className="relative">
                   <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
