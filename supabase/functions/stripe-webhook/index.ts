@@ -57,7 +57,7 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, supabase: Return
       return;
     }
 
-    if (event.type === 'checkout.session.async_payment_failed') {
+    if (event.type === 'checkout.session.async_payment_failed' || event.type === 'checkout.session.expired') {
       await handleCheckoutPaymentFailed(event.data.object as Stripe.Checkout.Session, supabase);
       return;
     }
@@ -177,7 +177,7 @@ async function handleCheckoutPaymentFailed(
   session: Stripe.Checkout.Session,
   supabase: ReturnType<typeof createClient>,
 ) {
-  const { id: checkout_session_id } = session;
+  const { id: checkout_session_id, metadata } = session;
 
   const { error } = await supabase
     .from('stripe_orders')
@@ -187,7 +187,26 @@ async function handleCheckoutPaymentFailed(
   if (error) {
     console.error('Error updating order on async failure:', error);
   } else {
-    console.info(`Async payment failed for session ${checkout_session_id}`);
+    const reservationId = metadata?.reservation_id;
+    if (reservationId) {
+      const { data: reservation } = await supabase
+        .from('reservations')
+        .select('customer_name, email, departure_date, total_price_mxn, deposit_amount_mxn, remaining_balance_mxn, tours(title_es, title_en)')
+        .eq('id', reservationId)
+        .maybeSingle();
+      if (reservation?.email) {
+        await sendPaymentFailedEmail({
+          to: reservation.email,
+          customer_name: reservation.customer_name,
+          tour_title: reservation.tours?.title_es ?? reservation.tours?.title_en ?? 'Tour',
+          departure_date: reservation.departure_date,
+          total: String(reservation.total_price_mxn),
+          deposit_amount: String(reservation.deposit_amount_mxn ?? ''),
+          remaining_balance: String(reservation.remaining_balance_mxn ?? ''),
+        });
+      }
+    }
+    console.info(`Payment failed or expired for session ${checkout_session_id}`);
   }
 }
 
@@ -361,6 +380,24 @@ async function sendConfirmationEmail(data: Record<string, string>) {
     }
   } catch (err) {
     console.error('Error sending confirmation email:', err);
+  }
+}
+
+async function sendPaymentFailedEmail(data: Record<string, string>) {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ type: 'reservation_payment_failed', to: data.to, data }),
+    });
+    if (!res.ok) console.error(`send-email responded with ${res.status}: ${await res.text()}`);
+  } catch (err) {
+    console.error('Error sending payment failure email:', err);
   }
 }
 

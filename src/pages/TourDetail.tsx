@@ -231,12 +231,8 @@ export default function TourDetail() {
       return;
     }
 
-    // For async payment methods (OXXO), send a "pending" email explaining
-    // the reservation is not confirmed until payment is received (max 72h).
-    // For card payments, the webhook sends the confirmation email once payment is confirmed.
-    if (effectiveMethod === 'oxxo') {
-      sendEmail('reservation_pending_payment', data.email, emailData);
-    }
+    // The reservation remains pending until Stripe confirms the deposit.
+    sendEmail('reservation_pending_payment', data.email, emailData);
     sendEmail('reservation_admin', 'contacto@recorramosmexico.com.mx', emailData);
 
     const { data: { session } } = await supabase.auth.getSession();

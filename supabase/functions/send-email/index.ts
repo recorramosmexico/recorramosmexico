@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_admin_proof" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_bank_transfer" | "reservation_confirmed" | "inquiry" | "inquiry_reply" | "product_purchase_traveler" | "product_purchase_admin" | "product_bank_transfer" | "product_payment_confirmed" | "product_payment_reminder" | "password_reset" | "review_request";
+  type: "welcome" | "contact" | "reservation_traveler" | "reservation_admin" | "reservation_admin_proof" | "reservation_payment_reminder" | "reservation_balance_request" | "reservation_pending_payment" | "reservation_payment_failed" | "reservation_bank_transfer" | "reservation_confirmed" | "inquiry" | "inquiry_reply" | "product_purchase_traveler" | "product_purchase_admin" | "product_bank_transfer" | "product_payment_confirmed" | "product_payment_reminder" | "password_reset" | "review_request";
   to: string;
   data: Record<string, string | number>;
 }
@@ -49,6 +49,25 @@ function buildText(title: string, body: string): string {
 
 function getTemplate(type: EmailPayload["type"], data: Record<string, string | number>, logoUrl: string): { subject: string; html_body: string; text_body: string } {
   switch (type) {
+    case "reservation_payment_failed": {
+      const subject = `Pago no procesado — ${data.tour_title}`;
+      const total = Number(data.total).toLocaleString("es-MX");
+      const depositAmount = data.deposit_amount ? Number(data.deposit_amount).toLocaleString("es-MX") : null;
+      const remainingBalance = data.remaining_balance ? Number(data.remaining_balance).toLocaleString("es-MX") : null;
+      const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">Hola <strong>${data.customer_name}</strong>,</p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">No pudimos confirmar el pago del anticipo para <strong>${data.tour_title}</strong>. Tu reserva sigue pendiente y no está confirmada.</p>
+        <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;"><p style="margin:0;color:#991b1b;font-size:14px;font-weight:700;">Realiza nuevamente el pago para evitar que tu reserva sea cancelada.</p></div>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
+          <p style="margin:0 0 8px;font-size:16px;font-weight:800;color:#111827;">${data.tour_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Fecha de salida:</strong> ${data.departure_date}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Costo total del tour:</strong> ${total} MXN</p>
+          ${depositAmount ? `<p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#E8670A;"><strong style="color:#374151;">Anticipo a pagar:</strong> ${depositAmount} MXN</p>` : ""}
+          ${remainingBalance ? `<p style="margin:0;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Saldo después del anticipo:</strong> ${remainingBalance} MXN</p>` : ""}
+        </div>
+        <a href="https://recorramosmexico.com.mx/mi-cuenta" style="display:inline-block;padding:14px 32px;background:#E8670A;color:#fff;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">Intentar pago nuevamente</a>`;
+      return { subject, html_body: buildHtml("Pago No Procesado", body, logoUrl), text_body: buildText(subject, `Hola ${data.customer_name},\n\nNo pudimos confirmar el pago del anticipo para ${data.tour_title}. Tu reserva sigue pendiente y no está confirmada.\n\nCosto total: ${total} MXN${depositAmount ? `\nAnticipo a pagar: ${depositAmount} MXN` : ""}${remainingBalance ? `\nSaldo después del anticipo: ${remainingBalance} MXN` : ""}\n\nRealiza nuevamente el pago en: https://recorramosmexico.com.mx/mi-cuenta`)};
+    }
+
     case "reservation_pending_payment": {
       const subject = `Solicitud de reserva recibida — ${data.tour_title}`;
       const total = Number(data.total).toLocaleString("es-MX");
@@ -221,7 +240,7 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
     }
 
     case "reservation_admin": {
-      const subject = `Nueva reserva — ${data.tour_title}`;
+      const subject = `Solicitud de reserva pendiente — ${data.tour_title}`;
       const total = Number(data.total).toLocaleString("es-MX");
       const depositAmount = data.deposit_amount ? Number(data.deposit_amount).toLocaleString("es-MX") : null;
       const remainingBalance = data.remaining_balance ? Number(data.remaining_balance).toLocaleString("es-MX") : null;
@@ -243,8 +262,8 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
         </div>`;
       return {
         subject,
-        html_body: buildHtml("Nueva Reserva Recibida", body, logoUrl),
-        text_body: buildText(subject, `Nueva reserva:\n\nTour: ${data.tour_title}\nCliente: ${data.customer_name}\nEmail: ${data.email}\nTeléfono: ${data.phone}\nFecha: ${data.departure_date}\nViajeros: ${data.travelers}\nCosto total del tour: ${total} MXN${depositAmount ? `\nAnticipo requerido (${depositPct}%): ${depositAmount} MXN` : ""}${remainingBalance ? `\nSaldo pendiente para el día de salida: ${remainingBalance} MXN` : ""}`),
+        html_body: buildHtml("Solicitud de Reserva — Pago Pendiente", body, logoUrl),
+        text_body: buildText(subject, `Solicitud de reserva pendiente de pago:\n\nTour: ${data.tour_title}\nCliente: ${data.customer_name}\nEmail: ${data.email}\nTeléfono: ${data.phone}\nFecha: ${data.departure_date}\nViajeros: ${data.travelers}\nCosto total del tour: ${total} MXN${depositAmount ? `\nAnticipo requerido (${depositPct}%): ${depositAmount} MXN` : ""}${remainingBalance ? `\nSaldo pendiente para el día de salida: ${remainingBalance} MXN` : ""}\n\nLa reserva NO está confirmada hasta verificar el pago.`),
       };
     }
 
