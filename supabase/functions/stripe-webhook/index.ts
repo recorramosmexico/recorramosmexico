@@ -311,15 +311,26 @@ async function markReservationPaid(
 
   const newStatus = paymentType === 'deposit' ? 'deposit_paid' : 'paid';
 
-  const { data: numberRow, error: numberError } = await supabase.rpc('generate_reservation_number');
+  const { data: existingReservation, error: reservationLookupError } = await supabase
+    .from('reservations')
+    .select('reservation_number')
+    .eq('id', reservationId)
+    .maybeSingle();
 
-  if (numberError || !numberRow) {
-    console.error(`Error generating reservation number for ${reservationId}:`, numberError);
-    await supabase.from('reservations').update({ payment_status: newStatus }).eq('id', reservationId);
+  if (reservationLookupError || !existingReservation) {
+    console.error(`Error loading reservation ${reservationId}:`, reservationLookupError);
     return;
   }
 
-  const reservationNumber: string = numberRow;
+  let reservationNumber = existingReservation.reservation_number;
+  if (!reservationNumber) {
+    const { data: numberRow, error: numberError } = await supabase.rpc('generate_reservation_number');
+    if (numberError || !numberRow) {
+      console.error(`Error generating reservation number for ${reservationId}:`, numberError);
+      return;
+    }
+    reservationNumber = numberRow;
+  }
 
   const { error: updateError } = await supabase
     .from('reservations')
