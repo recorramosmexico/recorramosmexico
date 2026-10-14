@@ -56,6 +56,7 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
       const remainingBalance = data.remaining_balance ? Number(data.remaining_balance).toLocaleString("es-MX") : null;
       const body = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">Hola <strong>${data.customer_name}</strong>,</p>
         <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">No pudimos confirmar el pago del anticipo para <strong>${data.tour_title}</strong>. Tu reserva sigue pendiente y no está confirmada.</p>
+        <p style="color:#374151;font-size:14px;margin:0 0 16px;"><strong>Folio de reserva:</strong> ${data.reservation_number}</p>
         <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;"><p style="margin:0;color:#991b1b;font-size:14px;font-weight:700;">Realiza nuevamente el pago para evitar que tu reserva sea cancelada.</p></div>
         <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
           <p style="margin:0 0 8px;font-size:16px;font-weight:800;color:#111827;">${data.tour_title}</p>
@@ -78,7 +79,9 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
           Hola <strong>${data.customer_name}</strong>,
         </p>
         <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
-          Hemos recibido tu solicitud de reserva para <strong>${data.tour_title}</strong>. Sin embargo, <strong>tu reserva no quedará confirmada hasta que realices el pago del anticipo</strong> a través de <strong>${paymentMethodLabel}</strong>.
+          Hemos recibido tu solicitud de reserva para <strong>${data.tour_title}</strong>. Sin embargo, <strong>tu reserva no quedará confirmada hasta que realices el pago del anticipo</strong> a través de <strong>${paymentMethodLabel}</strong>.</p>
+        <p style="color:#374151;font-size:14px;margin:0 0 16px;"><strong>Folio de reserva:</strong> ${data.reservation_number}</p>
+        <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">
         </p>
         <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;">
           <p style="margin:0 0 6px;color:#92400e;font-size:14px;font-weight:700;">Importante: tienes maximo 72 horas para realizar el pago.</p>
@@ -86,6 +89,7 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
         </div>
         <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
           <p style="margin:0 0 10px;font-size:16px;font-weight:800;color:#111827;">${data.tour_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Folio de reserva:</strong> ${data.reservation_number}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Fecha de salida:</strong> ${data.departure_date}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Viajeros:</strong> ${data.travelers}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total del tour:</strong> $${total} MXN</p>
@@ -124,6 +128,7 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
         </div>
         <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
           <p style="margin:0 0 10px;font-size:16px;font-weight:800;color:#111827;">${data.tour_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Folio de reserva:</strong> ${data.reservation_number}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Fecha de salida:</strong> ${data.departure_date}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Viajeros:</strong> ${data.travelers}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total del tour:</strong> $${total} MXN</p>
@@ -224,6 +229,7 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
         </p>
         <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
           <p style="margin:0 0 10px;font-size:16px;font-weight:800;color:#111827;">${data.tour_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Folio de reserva:</strong> ${data.reservation_number}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Fecha de salida:</strong> ${data.departure_date}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Viajeros:</strong> ${data.travelers}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total del tour:</strong> $${total} MXN</p>
@@ -240,7 +246,7 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
     }
 
     case "reservation_admin": {
-      const subject = `Solicitud de reserva pendiente — ${data.tour_title}`;
+      const subject = `Solicitud de reserva ${data.reservation_number} pendiente — ${data.tour_title}`;
       const total = Number(data.total).toLocaleString("es-MX");
       const depositAmount = data.deposit_amount ? Number(data.deposit_amount).toLocaleString("es-MX") : null;
       const remainingBalance = data.remaining_balance ? Number(data.remaining_balance).toLocaleString("es-MX") : null;
@@ -263,7 +269,7 @@ function getTemplate(type: EmailPayload["type"], data: Record<string, string | n
       return {
         subject,
         html_body: buildHtml("Solicitud de Reserva — Pago Pendiente", body, logoUrl),
-        text_body: buildText(subject, `Solicitud de reserva pendiente de pago:\n\nTour: ${data.tour_title}\nCliente: ${data.customer_name}\nEmail: ${data.email}\nTeléfono: ${data.phone}\nFecha: ${data.departure_date}\nViajeros: ${data.travelers}\nCosto total del tour: ${total} MXN${depositAmount ? `\nAnticipo requerido (${depositPct}%): ${depositAmount} MXN` : ""}${remainingBalance ? `\nSaldo pendiente para el día de salida: ${remainingBalance} MXN` : ""}\n\nLa reserva NO está confirmada hasta verificar el pago.`),
+        text_body: buildText(subject, `Solicitud de reserva pendiente de pago:\n\nFolio: ${data.reservation_number}\nTour: ${data.tour_title}\nCliente: ${data.customer_name}\nEmail: ${data.email}\nTeléfono: ${data.phone}\nFecha: ${data.departure_date}\nViajeros: ${data.travelers}\nCosto total del tour: ${total} MXN${depositAmount ? `\nAnticipo requerido (${depositPct}%): ${depositAmount} MXN` : ""}${remainingBalance ? `\nSaldo pendiente para el día de salida: ${remainingBalance} MXN` : ""}\n\nLa reserva NO está confirmada hasta verificar el pago.`),
       };
     }
 
@@ -381,6 +387,7 @@ Confirmar reserva: ${confirmUrl}`),
         </div>
         <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin-bottom:20px;">
           <p style="margin:0 0 10px;font-size:16px;font-weight:800;color:#111827;">${data.tour_title}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Folio de reserva:</strong> ${data.reservation_number}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Fecha de salida:</strong> ${data.departure_date}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Viajeros:</strong> ${data.travelers}</p>
           <p style="margin:0 0 6px;font-size:14px;color:#6b7280;"><strong style="color:#374151;">Total del tour:</strong> ${total} MXN</p>
@@ -398,7 +405,7 @@ Confirmar reserva: ${confirmUrl}`),
         html_body: buildHtml("Reserva por Transferencia Bancaria", body, logoUrl),
         text_body: buildText(
           subject,
-          `Hola ${data.customer_name},\n\nHemos recibido tu solicitud de reserva para ${data.tour_title}.\n\nDATOS BANCARIOS:\nBanco: Bancomer (BBVA)\nTarjeta: 4152 3141 0698 0256\nCLABE: 012180004833647476\nTitular: Trinidad Gil Martinez\n\nAnticipo a transferir (${depositPct}%): ${depositAmount} MXN\nTotal: ${total} MXN\n\nIMPORTANTE: Tienes maximo 72 horas para realizar la transferencia. Envianos el comprobante por WhatsApp al 562 387 2050 o subelo desde tu cuenta.\n\nVer estado: https://recorramosmexico.com.mx/mi-cuenta`,
+          `Hola ${data.customer_name},\n\nHemos recibido tu solicitud de reserva para ${data.tour_title}.\n\nFolio de reserva: ${data.reservation_number}\n\nDATOS BANCARIOS:\nBanco: Bancomer (BBVA)\nTarjeta: 4152 3141 0698 0256\nCLABE: 012180004833647476\nTitular: Trinidad Gil Martinez\n\nAnticipo a transferir (${depositPct}%): ${depositAmount} MXN\nTotal: ${total} MXN\n\nIMPORTANTE: Tienes maximo 72 horas para realizar la transferencia. Envianos el comprobante por WhatsApp al 562 387 2050 o subelo desde tu cuenta.\n\nVer estado: https://recorramosmexico.com.mx/mi-cuenta`,
         ),
       };
     }

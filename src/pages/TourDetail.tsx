@@ -191,7 +191,7 @@ export default function TourDetail() {
         notes: data.notes || '',
         selected_supplements: selectedSupplements.map((idx) => tour.supplements?.[idx]).filter(Boolean),
       })
-      .select('id')
+      .select('id, reservation_number')
       .single();
 
     if (reservationError || !reservation) {
@@ -208,6 +208,7 @@ export default function TourDetail() {
     }
 
     const emailData = {
+      reservation_number: reservation.reservation_number,
       tour_title: tourTitle,
       customer_name: data.customer_name,
       email: data.email,
@@ -226,7 +227,7 @@ export default function TourDetail() {
     if (effectiveMethod === 'bank_transfer') {
       sendEmail('reservation_bank_transfer', data.email, emailData);
       sendEmail('reservation_admin', 'contacto@recorramosmexico.com.mx', emailData);
-      setTransferReservation({ id: reservation.id, reservationNumber: null });
+      setTransferReservation({ id: reservation.id, reservationNumber: reservation.reservation_number });
       setSubmitting(false);
       return;
     }

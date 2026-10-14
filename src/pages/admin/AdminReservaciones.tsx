@@ -516,7 +516,7 @@ export default function AdminReservaciones() {
                         {res.reservation_number ? (
                           <div className="flex items-center gap-1.5 mb-1">
                             <Ticket size={12} className="text-green-500 flex-shrink-0" />
-                            <span className="font-mono text-xs font-bold text-green-700 tracking-wider">{res.reservation_number}</span>
+                            <span className="font-mono text-xs font-bold text-green-700 tracking-wider">Folio: {res.reservation_number}</span>
                           </div>
                         ) : null}
                         {tourTitle ? (
